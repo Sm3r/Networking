@@ -4,9 +4,9 @@ from mininet.link import TCLink
 
 class Topology(Topo):
     def __init__(self, switches, hosts):
-        Topo.__init__(self)
         self.switches_topology = switches
         self.hosts_per_switch = hosts
+        super().__init__()
 
     def build(self):
         self.switches = []
