@@ -3,15 +3,20 @@ from mininet.link import TCLink
 
 
 class Topology(Topo):
-    def build(self, switches, hosts):
+    def __init__(self, switches, hosts):
+        Topo.__init__(self)
+        self.switches_topology = switches
+        self.hosts_per_switch = hosts
+
+    def build(self):
         self.switches = []
         self.hosts = []
 
         # Create and link switches
-        for i, switch in enumerate(switches):
+        for i, switch in enumerate(self.switches_topology):
             self.switches.append(self.addSwitch('s' + str(i)))
 
-        for i, switch in enumerate(switches):
+        for i, switch in enumerate(self.switches_topology):
             for s in switch:
                 s1 = self.switches[i]
                 s2 = self.switches[s]
@@ -19,7 +24,7 @@ class Topology(Topo):
 
         # Create and link hosts
         cnt = 0
-        for i, host_count in enumerate(hosts):
+        for i, host_count in enumerate(self.hosts_per_switch):
             self.hosts.append([])
             for h in range(host_count):
                 cnt += 1
