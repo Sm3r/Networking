@@ -3,7 +3,7 @@ clear
 net_folder=network
 
 # Start controller
-ryu-manager $net_folder/controller.py &
+ryu-manager $net_folder/controller.py &> /dev/null &
 
 sleep 5
 
