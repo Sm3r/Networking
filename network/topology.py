@@ -3,12 +3,30 @@ from mininet.link import TCLink
 
 
 class Topology(Topo):
+    """
+    The topology of the network
+
+    Attributes:
+        switches_topology ([[int]]): adjaceny list of switches
+        hosts_per_switch ([int]): list of the number of hosts for each switch (the index in the list corresponds to the switch index) 
+    """
+
     def __init__(self, switches, hosts):
+        """
+        Initialize the topology of the network
+
+        Parameters:
+            switches ([[int]]): adjaceny list of switches
+            hosts ([int]): list of the number of hosts for each switch (the index in the list corresponds to the switch index) 
+        """
         self.switches_topology = switches
         self.hosts_per_switch = hosts
         super().__init__()
 
     def build(self):
+        """
+        Build a new network from the previously given topology
+        """
         self._switches = []
         self._hosts = []
 
