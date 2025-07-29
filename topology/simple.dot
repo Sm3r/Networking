@@ -1,0 +1,4 @@
+graph simple {
+    h1 -- s1;
+    s1 -- h2;
+}
