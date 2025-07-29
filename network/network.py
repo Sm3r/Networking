@@ -49,28 +49,17 @@ def setup(dot_file_path):
     )
     nat = net.addNAT().configDefault()
 
-    # BUG: DNS not working
+    info("*** Configuring DNS for hosts...\n")
+    for host in net.hosts:
+        resolv_file_path = f'/tmp/{host.name}.resolv.conf'
+        with open(resolv_file_path, 'w') as f:
+            f.write('nameserver 8.8.8.8\n') # Google DNS
+            f.write('nameserver 1.1.1.1\n') # Cloudflare DNS
 
-    # info(f"*** Setting up DNS...\n")
-    # for host in net.hosts:
-    #     if host.name.startswith('h'):
-    #         info(f"{host.name} ")
-    #         interfaces = host.cmd("ls /sys/class/net") 
-    #         for intf in interfaces.split(' '):
-    #             if host.name not in intf:
-    #                 continue
-    #             host.cmd(f"resolvectl dns {intf} 8.8.8.8")
-    #         host.cmd(f"systemctl restart systemd-resolved")
-    # info("\n")
+        host.cmd(f'mount --bind {resolv_file_path} /etc/resolv.conf')
+        info(f" {host.name}")
+    info("\n")
 
-
-    # info(f"*** Setting up DNS...\n")
-    # for host in net.hosts:
-    #     if host.name.startswith('h'):
-    #         info(f"{host.name} ")
-    #         host.cmd('ip route add default via 10.0.0.254')
-    #         host.cmd('echo "nameserver 8.8.8.8" > /etc/resolv.conf')
-    # info("\n")
     return net, nat
 
 def run(dot_file_path):
@@ -79,24 +68,40 @@ def run(dot_file_path):
     info("*** Starting network...\n")
     net.start()
 
-    time.sleep(1)
+    # It's good practice to wait a moment for the controller and switches to connect.
+    time.sleep(2)
 
-    info("*** Running ping test...\n")
+    info("*** Running initial connectivity test (pingAll)...\n")
     net.pingAll()
 
-    hostCount = len(net.hosts)
-    hostname = net.hosts[random.randint(0, hostCount - 1)]
-    info(f"*** Testing external internet access from host {hostname}...\n")
-    hostname.cmdPrint('ping -c 2 8.8.8.8')
+    # random_host = random.choice(net.hosts)
+    for host in net.hosts:
+        info(f"*** Testing external internet access from host {host.name}...\n") 
+        info(f"--> Pinging IP (8.8.8.8):\n")
+        host.cmdPrint('ping -c 2 8.8.8.8') 
+
+    for host in net.hosts:
+        info(f"*** Testing DNS name resolution from host {host.name}...\n") 
+        info(f"--> Pinging Hostname (google.com):\n")
+        host.cmdPrint('ping -c 2 google.com')
 
     # generate_traffic(net, duration=5)
     CLI(net)
 
+    info("*** Stopping network...\n")
     net.stop()
 
 if __name__ == '__main__':
-    setLogLevel('info')
+    # Check for the topology file argument
     if len(sys.argv) != 2:
         print(f"Usage: sudo python3 {sys.argv[0]} <topology.dot>")
-    else:
-        run(sys.argv[1])
+        sys.exit(1)
+
+    # Ensure the topology file exists
+    topology_file = sys.argv[1]
+    if not os.path.isfile(topology_file):
+        print(f"Error: Topology file not found at '{topology_file}'")
+        sys.exit(1)
+        
+    setLogLevel('info')
+    run(topology_file)
