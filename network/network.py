@@ -10,6 +10,7 @@ from mininet.net import Mininet
 from mininet.node import RemoteController, OVSKernelSwitch
 from mininet.link import TCLink
 from topology import CustomTopology
+from trafficgen import TrafficGenerator
 
 # def generate_traffic(net, duration=60):
 #     # TODO: Select automatically which hosts to use as servers and clients
@@ -35,6 +36,31 @@ from topology import CustomTopology
 #
 #         time.sleep(random.randint(2, 5))
 
+def setup_dns(net):
+    info("*** Configuring DNS for hosts...\n")
+    for host in net.hosts:
+        resolv_file_path = f'/tmp/{host.name}.resolv.conf'
+        with open(resolv_file_path, 'w') as f:
+            f.write('nameserver 8.8.8.8\n') # Google DNS
+            f.write('nameserver 1.1.1.1\n') # Cloudflare DNS
+
+        host.cmd(f'mount --bind {resolv_file_path} /etc/resolv.conf')
+        info(f" {host.name}")
+    info("\n")
+
+def setup_ftp_servers(net):
+    info(f'*** Configuring FTP servers...\n')
+    for server_name in net.topo.servers:
+        server_host = net.get(server_name)
+        
+        # Create a unique file for this server
+        file_to_download = f'file_from_{server_name}.txt'
+        server_host.cmd(f'echo "Data from {server_name}" > /srv/ftp/{file_to_download}')
+        server_host.cmd(f'chmod 644 /srv/ftp/{file_to_download}')
+        
+        # Start FTP server
+        server_host.cmd('/usr/sbin/vsftpd &')
+
 def setup(dot_file_path):
     topo = CustomTopology(dot_file_path)
     controller = RemoteController('ryuController', ip='127.0.0.1', port=6653)
@@ -49,16 +75,8 @@ def setup(dot_file_path):
     )
     nat = net.addNAT().configDefault()
 
-    info("*** Configuring DNS for hosts...\n")
-    for host in net.hosts:
-        resolv_file_path = f'/tmp/{host.name}.resolv.conf'
-        with open(resolv_file_path, 'w') as f:
-            f.write('nameserver 8.8.8.8\n') # Google DNS
-            f.write('nameserver 1.1.1.1\n') # Cloudflare DNS
-
-        host.cmd(f'mount --bind {resolv_file_path} /etc/resolv.conf')
-        info(f" {host.name}")
-    info("\n")
+    setup_dns(net)
+    setup_ftp_servers(net)
 
     return net, nat
 
@@ -71,22 +89,26 @@ def run(dot_file_path):
     # It's good practice to wait a moment for the controller and switches to connect.
     time.sleep(2)
 
-    info("*** Running initial connectivity test (pingAll)...\n")
-    net.pingAll()
+    # info("*** Running initial connectivity test (pingAll)...\n")
+    # net.pingAll()
 
-    # random_host = random.choice(net.hosts)
-    for host in net.hosts:
-        info(f"*** Testing external internet access from host {host.name}...\n") 
-        info(f"--> Pinging IP (8.8.8.8):\n")
-        host.cmdPrint('ping -c 2 8.8.8.8') 
+    # for host in net.hosts:
+    #     info(f"*** Testing external internet access from host {host.name}...\n") 
+    #     info(f"--> Pinging IP (8.8.8.8):\n")
+    #     host.cmdPrint('ping -c 2 8.8.8.8') 
+    #
+    # for host in net.hosts:
+    #     info(f"*** Testing DNS name resolution from host {host.name}...\n") 
+    #     info(f"--> Pinging Hostname (google.com):\n")
+    #     host.cmdPrint('ping -c 2 google.com')
 
-    for host in net.hosts:
-        info(f"*** Testing DNS name resolution from host {host.name}...\n") 
-        info(f"--> Pinging Hostname (google.com):\n")
-        host.cmdPrint('ping -c 2 google.com')
+    traffic = TrafficGenerator()
 
-    # generate_traffic(net, duration=5)
-    CLI(net)
+    # traffic.http_request(host=net.get('h1'), duration=10)
+
+    # CLI(net) 
+
+    traffic.wait_for_completion()
 
     info("*** Stopping network...\n")
     net.stop()

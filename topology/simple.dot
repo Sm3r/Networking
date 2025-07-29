@@ -1,4 +1,6 @@
 graph simple {
+    h2 [type="server"];
+
     h1 -- s1;
     s1 -- h2;
 }
