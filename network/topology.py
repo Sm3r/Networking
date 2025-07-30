@@ -1,6 +1,9 @@
 import networkx as nx
+import logging
 from mininet.topo import Topo
-from mininet.log import info
+from customlogger.colors import LoggerColors
+
+logger = logging.getLogger('networking')
 
 class CustomTopology(Topo):
     """
@@ -38,4 +41,13 @@ class CustomTopology(Topo):
         # Add edges
         for u, v in graph.edges():
             self.addLink(u, v)
+
+        logger.info(
+            f"""Topology info:
+  ┣  {LoggerColors.BOLD}Hosts:{LoggerColors.RESET} {len(self.hosts())}
+  ┣  {LoggerColors.BOLD}Servers:{LoggerColors.RESET} {len(self.servers)}
+  ┣  {LoggerColors.BOLD}Links:{LoggerColors.RESET} {len(self.links())}
+  ┗  {LoggerColors.BOLD}Switches:{LoggerColors.RESET} {len(self.switches())}
+"""
+        )
 
