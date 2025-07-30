@@ -56,10 +56,14 @@ def setup_ftp_servers(net):
         # Create a unique file for this server
         file_to_download = f'file_from_{server_name}.txt'
         server_host.cmd(f'echo "Data from {server_name}" > /srv/ftp/{file_to_download}')
+        server_host.cmd(f'seq 1 10000000 >> /srv/ftp/{file_to_download}')
         server_host.cmd(f'chmod 644 /srv/ftp/{file_to_download}')
+
+        # Configure vsftpd to enable anonymous donwloads
+        server_host.cmd(f'sudo sed -i "s/^#* *anonymous_enable=NO/anonymous_enable=YES/" /etc/vsftpd.conf')
         
         # Start FTP server
-        server_host.cmd('/usr/sbin/vsftpd &')
+        server_host.cmdPrint('/usr/sbin/vsftpd &')
 
 def setup(dot_file_path):
     topo = CustomTopology(dot_file_path)
@@ -80,6 +84,10 @@ def setup(dot_file_path):
 
     return net, nat
 
+def teardown(net):
+    for server in net.topo.servers:
+        net.get(server).cmd('kill %/usr/sbin/vsftpd')
+
 def run(dot_file_path):
     net, nat = setup(dot_file_path)
 
@@ -89,26 +97,15 @@ def run(dot_file_path):
     # It's good practice to wait a moment for the controller and switches to connect.
     time.sleep(2)
 
-    # info("*** Running initial connectivity test (pingAll)...\n")
-    # net.pingAll()
-
-    # for host in net.hosts:
-    #     info(f"*** Testing external internet access from host {host.name}...\n") 
-    #     info(f"--> Pinging IP (8.8.8.8):\n")
-    #     host.cmdPrint('ping -c 2 8.8.8.8') 
-    #
-    # for host in net.hosts:
-    #     info(f"*** Testing DNS name resolution from host {host.name}...\n") 
-    #     info(f"--> Pinging Hostname (google.com):\n")
-    #     host.cmdPrint('ping -c 2 google.com')
-
     traffic = TrafficGenerator()
 
-    # traffic.http_request(host=net.get('h1'), duration=10)
+    # TODO: Generate network traffic
 
-    # CLI(net) 
+    CLI(net) 
 
     traffic.wait_for_completion()
+
+    teardown(net)
 
     info("*** Stopping network...\n")
     net.stop()

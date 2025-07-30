@@ -6,5 +6,5 @@ Project for the University of Trento course of Virtualized network (Networking
 ## Dependencies
 
 ```bash
-sudo apt install graphviz graphviz-dev mininet ifupdown
+sudo apt install graphviz graphviz-dev mininet ifupdown vsftpd
 ```
