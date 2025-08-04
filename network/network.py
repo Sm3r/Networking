@@ -22,6 +22,12 @@ logger = logging.getLogger('networking')
 #             h1.cmd('cat /dev/urandom | head -c 1M | nc 10.0.0.2 5001')
 
 def setup_dns(net):
+    """
+    Setup the DNS for each host of the network
+
+    Attributes:
+        net: a Mininet network
+    """
     logger.info('Configuring DNS for hosts...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
     for host in net.hosts:
@@ -35,6 +41,12 @@ def setup_dns(net):
     logger.debug('\n', extra={'no_header': True})
 
 def setup_ftp_servers(net):
+    """
+    Setup and start an FTP server for each marked host
+
+    Attributes:
+        net: a Mininet network
+    """
     logger.info(f'Configuring FTP servers...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
     for server_name in net.topo.servers:
@@ -61,6 +73,12 @@ def setup_ftp_servers(net):
             logger.error(f'{server_name} FTP server is not running\n')
 
 def setup(dot_file_path):
+    """
+    Generate and configure a Mininet network describing the topology from a Graphviz dot file
+
+    Attributes:
+        dot_file_path (string): path of the dot file
+    """
     topo = CustomTopology(dot_file_path)
     controller = RemoteController('ryuController', ip='127.0.0.1', port=6653)
 
@@ -79,6 +97,12 @@ def setup(dot_file_path):
     return net, nat
 
 def teardown(net):
+    """
+    Destroy a Mininet network
+
+    Attributes:
+        net: a Mininet network
+    """
     logger.debug('Stopping FTP servers...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
     for server_name in net.topo.servers:
@@ -87,6 +111,12 @@ def teardown(net):
     logger.debug('\n', extra={'no_header': True})
 
 def run(dot_file_path):
+    """
+    Start the Mininet network and the traffic generation
+
+    Attributes:
+        dot_file_path (string): path of the dot file
+    """
     net, nat = setup(dot_file_path)
 
     logger.info('Starting network...\n')
@@ -116,6 +146,9 @@ def run(dot_file_path):
     net.stop()
 
 def setup_logger():
+    """
+    Configure the custom logger
+    """
     # Custom format headers
     log_headers = {
         logging.DEBUG:   f"{LoggerColors.BOLD} *** [DEBUG]:{LoggerColors.RESET} %(msg)s",

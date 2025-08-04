@@ -8,11 +8,14 @@ logger = logging.getLogger('networking')
 class CustomTopology(Topo):
     """
     The topology of the network
-
-    Attributes:
-        path (string): path of the network topology graphviz dot file
     """
     def __init__(self, path, **opts):
+        """
+        Parse the dot file and create the network topology
+
+        Attributes:
+            path (string): path of the network topology graphviz dot file
+        """
         super().__init__(**opts)
         self.servers = []
 
@@ -20,13 +23,13 @@ class CustomTopology(Topo):
         graph = nx.nx_agraph.read_dot(path)
         self.create_topology(graph)
 
-    """
-    Generate the topology of the network
-
-    Attributes:
-        graph: NetworkX graph representing the topology of the network
-    """
     def create_topology(self, graph):
+        """
+        Generate the topology of the network
+
+        Attributes:
+            graph: NetworkX graph representing the topology of the network
+        """
         # Add nodes
         for node, attrs in graph.nodes(data=True):
             if node.startswith('s'):
