@@ -5,7 +5,7 @@ class CustomFormatter(logging.Formatter):
     A custom log formatter that uses different formats for each log level
     """
 
-    def __init__(self, formats):
+    def __init__(self, formats: dict):
         """
         Initializes the formatter with a dictionary of formats
 
@@ -17,7 +17,7 @@ class CustomFormatter(logging.Formatter):
         # Separate formatter for messages without header
         self.plain_formatter = logging.Formatter('%(message)s')
 
-    def format(self, extra):
+    def format(self, extra: dict):
         """
         Overrides the default format method.
 

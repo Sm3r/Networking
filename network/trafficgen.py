@@ -1,3 +1,4 @@
+from mininet.node import Host
 from tasks.scheduler import TaskScheduler
 from urllib.parse import urlunparse
 import logging
@@ -15,13 +16,13 @@ class TrafficGenerator:
         super().__init__()
         self.scheduler = TaskScheduler()
 
-    def http_request(self, host, url, duration=20):
+    def http_request(self, host: Host, url: str, duration: int = 20):
         """
         Send multiple HTTP requests for a certain amount of time
 
         Attributes:
-            host: the host from which the request is sent
-            url (string): the target url for the request
+            host (Host): the host from which the request is sent
+            url (str): the target url for the request
             duration (int): the maximum amount of time allowed for request to be sent
         """
         scheme = 'https'
@@ -45,14 +46,14 @@ class TrafficGenerator:
             args=(host, complete_url)
         )
 
-    def ftp_request(self, host, url, filepath, duration=20):
+    def ftp_request(self, host: Host, url: str, filepath: str, duration: int = 20):
         """
         Send multiple FTP requests for a certain amount of time
 
         Attributes:
-            host: the host from which the request is sent
-            url (string): the target url for the request
-            filepath (string): the path of the file to download
+            host (Host): the host from which the request is sent
+            url (str): the target url for the request
+            filepath (str): the path of the file to download
             duration (int): the maximum amount of time allowed for request to be sent
         """
         scheme = 'ftp'

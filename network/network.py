@@ -21,12 +21,12 @@ logger = logging.getLogger('networking')
 #             h2.cmd('nc -l -p 5001 > /dev/null &')
 #             h1.cmd('cat /dev/urandom | head -c 1M | nc 10.0.0.2 5001')
 
-def setup_dns(net):
+def setup_dns(net: Mininet):
     """
     Setup the DNS for each host of the network
 
     Attributes:
-        net: a Mininet network
+        net (Mininet): a Mininet network
     """
     logger.info('Configuring DNS for hosts...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
@@ -40,12 +40,12 @@ def setup_dns(net):
         logger.debug(f'{host.name} ', extra={'no_header': True})
     logger.debug('\n', extra={'no_header': True})
 
-def setup_ftp_servers(net):
+def setup_ftp_servers(net: Mininet):
     """
     Setup and start an FTP server for each marked host
 
     Attributes:
-        net: a Mininet network
+        net (Mininet): a Mininet network
     """
     logger.info(f'Configuring FTP servers...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
@@ -72,12 +72,12 @@ def setup_ftp_servers(net):
         if result.strip() == '':
             logger.error(f'{server_name} FTP server is not running\n')
 
-def setup(dot_file_path):
+def setup(dot_file_path: str):
     """
     Generate and configure a Mininet network describing the topology from a Graphviz dot file
 
     Attributes:
-        dot_file_path (string): path of the dot file
+        dot_file_path (str): path of the dot file
     """
     topo = CustomTopology(dot_file_path)
     controller = RemoteController('ryuController', ip='127.0.0.1', port=6653)
@@ -96,12 +96,12 @@ def setup(dot_file_path):
     setup_ftp_servers(net)
     return net, nat
 
-def teardown(net):
+def teardown(net: Mininet):
     """
     Destroy a Mininet network
 
     Attributes:
-        net: a Mininet network
+        net (Mininet): a Mininet network
     """
     logger.debug('Stopping FTP servers...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
@@ -110,12 +110,12 @@ def teardown(net):
         logger.debug(f'{server_name} ', extra={'no_header': True})
     logger.debug('\n', extra={'no_header': True})
 
-def run(dot_file_path):
+def run(dot_file_path: str):
     """
     Start the Mininet network and the traffic generation
 
     Attributes:
-        dot_file_path (string): path of the dot file
+        dot_file_path (str): path of the dot file
     """
     net, nat = setup(dot_file_path)
 

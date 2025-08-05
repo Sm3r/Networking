@@ -2,6 +2,7 @@ import networkx as nx
 import logging
 from mininet.topo import Topo
 from customlogger.colors import LoggerColors
+from typing import Any
 
 logger = logging.getLogger('networking')
 
@@ -9,12 +10,13 @@ class CustomTopology(Topo):
     """
     The topology of the network
     """
-    def __init__(self, path, **opts):
+    def __init__(self, path: str, **opts: Any):
         """
         Parse the dot file and create the network topology
 
         Attributes:
             path (string): path of the network topology graphviz dot file
+            opts (Any): additional arguments
         """
         super().__init__(**opts)
         self.servers = []
@@ -23,12 +25,12 @@ class CustomTopology(Topo):
         graph = nx.nx_agraph.read_dot(path)
         self.create_topology(graph)
 
-    def create_topology(self, graph):
+    def create_topology(self, graph: nx.Graph):
         """
         Generate the topology of the network
 
         Attributes:
-            graph: NetworkX graph representing the topology of the network
+            graph (nx.Graph): NetworkX graph representing the topology of the network
         """
         # Add nodes
         for node, attrs in graph.nodes(data=True):
