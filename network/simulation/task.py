@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, Any, Optional
 
 @dataclass(order=True)
 class Task:
@@ -15,9 +15,14 @@ class Task:
         callback (Callable): function to execute
         args (tuple): tuple of arguments used by the function
         kwargs (dict): dictionary of extra arguments
+        on_success (Optional[Callable[[Any], None]]): callback executed on function succesfull completion
+        on_failure (Optional[Callable[[Exception], None]]): callback executed on function failure
     """
     start_time: float
     callback: Callable = field(compare=False)
     name: str = field(compare=False, default="Task")
     args: tuple = field(compare=False, default=())
     kwargs: dict = field(compare=False, default_factory=dict)
+    
+    on_success: Optional[Callable[[Any], None]] = field(compare=False, default=None)
+    on_failure: Optional[Callable[[Exception], None]] = field(compare=False, default=None)

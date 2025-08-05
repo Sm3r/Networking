@@ -18,6 +18,7 @@ from typing import Tuple
 from simulation.taskqueue import TaskQueue
 from simulation.task import Task
 from simulation.simulation import Simulation
+from simulation.traffic import Traffic
 
 logger = logging.getLogger('networking')
 
@@ -102,7 +103,7 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
 
 def teardown(net: Mininet):
     """
-    Destroy a Mininet network
+    Stop and Destroy a Mininet network
 
     Attributes:
         net (Mininet): a Mininet network
@@ -114,8 +115,8 @@ def teardown(net: Mininet):
         logger.debug(f'{server_name} ', extra={'no_header': True})
     logger.debug('\n', extra={'no_header': True})
 
-def test_fun(host):
-    host.cmd('echo aasd')
+    logger.info('Stopping network...\n')
+    net.stop()
 
 def start_simulation(net: Mininet, timeout: int = 0):
     """
@@ -127,7 +128,14 @@ def start_simulation(net: Mininet, timeout: int = 0):
     queue = TaskQueue()
 
     # TODO:Add tasks
-    queue.add_task(start_time=5, callback=test_fun, args=(net.get('h1'),))
+    traffic = Traffic()
+    queue.add_task(
+        start_time=5,
+        callback=traffic._http_request,
+        args=(net.get('h1'), 'google.com'),
+        on_success=traffic._http_success,
+        on_failure=traffic._http_failure
+    )
     # queue.add_task(start_time=2, target=sample_mininet_task, args=('h2', 3, "iperf h1"))
     # queue.add_task(start_time=2.1, target=failing_task, name="ErrorTask")
     # queue.add_task(start_time=4, target=sample_mininet_task, args=('h1', 1, "curl google.com"))
@@ -137,7 +145,7 @@ def start_simulation(net: Mininet, timeout: int = 0):
 
     try:
         if timeout == 0:
-            sim.join() # Wait until simulation finishes
+            sim.join(timeout=10) # Wait until simulation finishes
         else:
             time.sleep(timeout)
     except KeyboardInterrupt:
@@ -176,9 +184,6 @@ def run(dot_file_path: str):
 
     teardown(net)
 
-    logger.info('Stopping network...\n')
-    net.stop()
-
 def setup_logger():
     """
     Configure the custom logger
@@ -186,7 +191,7 @@ def setup_logger():
     # Custom format headers
     log_headers = {
         logging.DEBUG:   f"{LoggerColors.BOLD} *** [DEBUG]:{LoggerColors.RESET} %(msg)s",
-        logging.INFO:    f"{LoggerColors.CYAN} *** [INFO]:{LoggerColors.RESET} %(msg)s",
+        logging.INFO:    f"{LoggerColors.BLUE} *** [INFO]:{LoggerColors.RESET} %(msg)s",
         logging.WARNING: f"{LoggerColors.YELLOW} *** [WARNING]:{LoggerColors.RESET} %(msg)s",
         logging.ERROR:   f"{LoggerColors.RED} *** [ERROR]:{LoggerColors.RESET} %(msg)s",
         logging.CRITICAL:f"{LoggerColors.BOLD}{LoggerColors.RED} *** [CRITICAL]:{LoggerColors.RESET} %(msg)s",

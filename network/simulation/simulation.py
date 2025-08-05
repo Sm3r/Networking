@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from simulation.taskqueue import TaskQueue
 from simulation.task import Task
+from typing import Optional
 
 logger = logging.getLogger('networking')
 
@@ -24,6 +25,10 @@ class Simulation(threading.Thread):
         self._stop_event = threading.Event()
         self._simulation_start_time = 0
         self.daemon = True # Allows main program to exit even if this thread is running
+   
+        # Track active threads with a list
+        self._active_threads = []
+        self._threads_lock = threading.Lock()
 
     def _task_runner(self, task: Task):
         """
@@ -33,11 +38,25 @@ class Simulation(threading.Thread):
             task (Task): the task to run
         """
         try:
-            logger.info(f"[{datetime.now().strftime('%H:%M:%S.%f')}]: Starting task {task.name}...\n")
-            task.callback(*task.args, **task.kwargs)
+            logger.info(f"[{datetime.now().strftime('%H:%M:%S.%f')}] Starting task {task.name}...\n")
+            result = task.callback(*task.args, **task.kwargs)
             logger.debug(f"[{datetime.now().strftime('%H:%M:%S.%f')}]: Succesfully executed task {task.name}\n")
+
+            # If an on_success callback exists, call it with the result
+            if task.on_success:
+                try:
+                    task.on_success(result)
+                except Exception as cb_e:
+                    logger.warning(f"On_success callback for task '{task.name}' failed with error {cb_e}\n")
         except Exception as e:
-            logger.warning(f"[{datetime.now().strftime('%H:%M:%S.%f')}]: Task {task.name} failed with error {e}\n", exc_info=False)
+            logger.warning(f"[{datetime.now().strftime('%H:%M:%S.%f')}] Task {task.name} failed with error {e}\n", exc_info=False)
+
+            # If an on_failure callback exists, call it with the exception
+            if task.on_failure:
+                try:
+                    task.on_failure(e)
+                except Exception as cb_e:
+                    logger.warning(f"On_error callback for task '{task.name}' failed with error {cb_e}\n")
 
     def run(self):
         """The main simulation loop. Do not call this directly; use start()"""
@@ -77,6 +96,9 @@ class Simulation(threading.Thread):
                         name=f"Task-{due_task.name}",
                         daemon=True
                     )
+                    # Track active thread
+                    with self._threads_lock:
+                        self._active_threads.append(task_thread)
                     task_thread.start()
 
         logger.info("Simulation loop has been stopped\n")
@@ -85,3 +107,25 @@ class Simulation(threading.Thread):
         """Signals the simulation to stop gracefully."""
         logger.info("Stop signal received. Shutting down simulation...\n")
         self._stop_event.set()
+
+    def join(self, timeout: Optional[float] = None):
+        """
+        Overrides the default join method
+
+        It first waits for the main simulation loop (the thread itself) to
+        finish, and then waits for all dispatched task threads to complete.
+
+        Attributes:
+            timeout (float): maximum allowed amount of time to wait for the execution
+        """
+        # Wait for the main scheduler thread to finish
+        super().join(timeout)
+        
+        logger.info('Waiting for all dispatched tasks to complete...\n')
+        with self._threads_lock:
+            threads_to_wait_for = list(self._active_threads)
+
+        for thread in threads_to_wait_for:
+            thread.join() # This blocks until the individual task thread is done
+        
+        logger.info("All dispatched tasks have completed!\n")
