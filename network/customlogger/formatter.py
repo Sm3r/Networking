@@ -17,7 +17,7 @@ class CustomFormatter(logging.Formatter):
         # Separate formatter for messages without header
         self.plain_formatter = logging.Formatter('%(message)s')
 
-    def format(self, extra: dict):
+    def format(self, extra: dict) -> str:
         """
         Overrides the default format method.
 

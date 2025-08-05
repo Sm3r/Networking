@@ -8,12 +8,16 @@ import logging
 from mininet import log
 from mininet.cli import CLI
 from mininet.net import Mininet
+from mininet.nodelib import NAT
 from mininet.node import RemoteController, OVSKernelSwitch
 from mininet.link import TCLink
 from topology import CustomTopology
-from trafficgen import TrafficGenerator
 from customlogger.colors import LoggerColors
 from customlogger.formatter import CustomFormatter
+from typing import Tuple
+from simulation.taskqueue import TaskQueue
+from simulation.task import Task
+from simulation.simulation import Simulation
 
 logger = logging.getLogger('networking')
 
@@ -72,7 +76,7 @@ def setup_ftp_servers(net: Mininet):
         if result.strip() == '':
             logger.error(f'{server_name} FTP server is not running\n')
 
-def setup(dot_file_path: str):
+def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
     """
     Generate and configure a Mininet network describing the topology from a Graphviz dot file
 
@@ -106,9 +110,43 @@ def teardown(net: Mininet):
     logger.debug('Stopping FTP servers...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
     for server_name in net.topo.servers:
-        net.get(server_name).cmd('kill %/usr/sbin/vsftpd')
+        net.get(server_name).cmd('pkill vsftpd')
         logger.debug(f'{server_name} ', extra={'no_header': True})
     logger.debug('\n', extra={'no_header': True})
+
+def test_fun(host):
+    host.cmd('echo aasd')
+
+def start_simulation(net: Mininet, timeout: int = 0):
+    """
+    Configure and start the simulation
+
+    Attributes:
+        timeout (int): time to wait for the completion of the simulation, if 0 wait until all tasks ar executed
+    """
+    queue = TaskQueue()
+
+    # TODO:Add tasks
+    queue.add_task(start_time=5, callback=test_fun, args=(net.get('h1'),))
+    # queue.add_task(start_time=2, target=sample_mininet_task, args=('h2', 3, "iperf h1"))
+    # queue.add_task(start_time=2.1, target=failing_task, name="ErrorTask")
+    # queue.add_task(start_time=4, target=sample_mininet_task, args=('h1', 1, "curl google.com"))
+
+    sim = Simulation(task_queue=queue)
+    sim.start()
+
+    try:
+        if timeout == 0:
+            sim.join() # Wait until simulation finishes
+        else:
+            time.sleep(timeout)
+    except KeyboardInterrupt:
+        logger.info('Keyboard interrupt received\n')
+    finally:
+        logger.info('Stopping simulation...\n')
+        sim.stop()
+        logger.debug('Wait for simulation thread to fully terminate...\n')
+        sim.join(timeout=2)
 
 def run(dot_file_path: str):
     """
@@ -132,13 +170,9 @@ def run(dot_file_path: str):
     logger.debug(f'\n', extra={'no_header': True})
     
     logger.info(f'Network started!\n')
-    traffic = TrafficGenerator()
+    start_simulation(net)
 
-    # TODO: Generate network traffic
-
-    CLI(net) 
-
-    traffic.wait_for_completion()
+    # CLI(net) 
 
     teardown(net)
 
