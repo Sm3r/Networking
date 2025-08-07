@@ -18,7 +18,6 @@ from typing import Tuple
 from simulation.taskqueue import TaskQueue
 from simulation.task import Task
 from simulation.simulation import Simulation
-from traffic import TrafficGenerator
 
 logger = logging.getLogger('networking')
 
@@ -114,27 +113,24 @@ def teardown(net: Mininet):
     logger.info('Stopping network...\n')
     net.stop()
 
-def start_simulation(net: Mininet, duration: int = 0):
+def start_simulation(net: Mininet):
     """
     Configure and start the simulation
 
     Attributes:
-        timeout (int): time to wait for the completion of the simulation, if 0 wait until all tasks ar executed
+        net (Mininet): a Mininet network
     """
-    queue = TaskQueue()
-    traffic = TrafficGenerator()
-
-    # TODO: Generate random tasks
-    queue.add_task(start_time=2, callback=traffic.http_request, args=(net.get('h1'), 'www.google.com'))
-    queue.add_task(start_time=4, callback=traffic.http_request, args=(net.get('h2'), 'www.amazon.com'))
-    queue.add_task(start_time=4, callback=traffic.ftp_request, args=(net.get('h1'), '10.0.0.2', 'file_from_h2.txt'))
-
-    sim = Simulation(task_queue=queue)
+    sim = Simulation(
+        net=net,
+        mean_requests_count=35,
+        total_duration=10.0
+    )
     sim.start()
 
-    logger.debug('Wait for simulation thread to fully terminate...\n')
+    logger.info('Wait for simulation thread to fully terminate...\n')
     time.sleep(1)
     sim.wait_for_completion(timeout=10)
+    logger.info("Simulation terminated!\n")
 
 def run(dot_file_path: str):
     """
