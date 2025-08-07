@@ -18,12 +18,9 @@ from typing import Tuple
 from simulation.taskqueue import TaskQueue
 from simulation.task import Task
 from simulation.simulation import Simulation
+from traffic import TrafficGenerator
 
 logger = logging.getLogger('networking')
-
-#         elif choice == 'netcat':
-#             h2.cmd('nc -l -p 5001 > /dev/null &')
-#             h1.cmd('cat /dev/urandom | head -c 1M | nc 10.0.0.2 5001')
 
 def setup_dns(net: Mininet):
     """
@@ -114,8 +111,8 @@ def teardown(net: Mininet):
         logger.debug(f'{server_name} ', extra={'no_header': True})
     logger.debug('\n', extra={'no_header': True})
 
-def test_fun(host):
-    host.cmd('echo aasd')
+    logger.info('Stopping network...\n')
+    net.stop()
 
 def start_simulation(net: Mininet, timeout: int = 0):
     """
@@ -125,12 +122,12 @@ def start_simulation(net: Mininet, timeout: int = 0):
         timeout (int): time to wait for the completion of the simulation, if 0 wait until all tasks ar executed
     """
     queue = TaskQueue()
+    traffic = TrafficGenerator()
 
     # TODO:Add tasks
-    queue.add_task(start_time=5, callback=test_fun, args=(net.get('h1'),))
-    # queue.add_task(start_time=2, target=sample_mininet_task, args=('h2', 3, "iperf h1"))
-    # queue.add_task(start_time=2.1, target=failing_task, name="ErrorTask")
-    # queue.add_task(start_time=4, target=sample_mininet_task, args=('h1', 1, "curl google.com"))
+    queue.add_task(start_time=2, callback=traffic.http_request, args=(net.get('h1'), 'www.google.com'))
+    queue.add_task(start_time=4, callback=traffic.http_request, args=(net.get('h2'), 'www.amazon.com'))
+    queue.add_task(start_time=4, callback=traffic.ftp_request, args=(net.get('h1'), '10.0.0.2', 'file_from_h2.txt'))
 
     sim = Simulation(task_queue=queue)
     sim.start()
@@ -143,6 +140,7 @@ def start_simulation(net: Mininet, timeout: int = 0):
     except KeyboardInterrupt:
         logger.info('Keyboard interrupt received\n')
     finally:
+        time.sleep(1)
         logger.info('Stopping simulation...\n')
         sim.stop()
         logger.debug('Wait for simulation thread to fully terminate...\n')
@@ -176,9 +174,6 @@ def run(dot_file_path: str):
 
     teardown(net)
 
-    logger.info('Stopping network...\n')
-    net.stop()
-
 def setup_logger():
     """
     Configure the custom logger
@@ -186,7 +181,7 @@ def setup_logger():
     # Custom format headers
     log_headers = {
         logging.DEBUG:   f"{LoggerColors.BOLD} *** [DEBUG]:{LoggerColors.RESET} %(msg)s",
-        logging.INFO:    f"{LoggerColors.CYAN} *** [INFO]:{LoggerColors.RESET} %(msg)s",
+        logging.INFO:    f"{LoggerColors.BLUE} *** [INFO]:{LoggerColors.RESET} %(msg)s",
         logging.WARNING: f"{LoggerColors.YELLOW} *** [WARNING]:{LoggerColors.RESET} %(msg)s",
         logging.ERROR:   f"{LoggerColors.RED} *** [ERROR]:{LoggerColors.RESET} %(msg)s",
         logging.CRITICAL:f"{LoggerColors.BOLD}{LoggerColors.RED} *** [CRITICAL]:{LoggerColors.RESET} %(msg)s",

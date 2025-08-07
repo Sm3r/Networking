@@ -53,5 +53,6 @@ printf "${PURPLE} *** [SHELL]:${RESET} Clearing everything...\n"
 
 # Clear everything
 sudo mn -c
+pkill ryu-manager
 
 printf "${PURPLE} *** [SHELL]:${RESET} Goodbye!!! (;_;)\n"
