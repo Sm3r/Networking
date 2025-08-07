@@ -1,13 +1,14 @@
 import time
-import threading
 import logging
+import threading
 from datetime import datetime
 from simulation.taskqueue import TaskQueue
 from simulation.task import Task
+from typing import Optional
 
 logger = logging.getLogger('networking')
 
-class Simulation(threading.Thread):
+class Simulation():
     """
     Manages the simulation lifecycle, processing tasks from a TaskQueue
     in a separate thread.
@@ -19,11 +20,10 @@ class Simulation(threading.Thread):
         Attributes:
             task_queue (TaskQueue): task queue to process
         """
-        super().__init__(name="MainSimulationThread")
+        super().__init__()
         self.task_queue = task_queue
-        self._stop_event = threading.Event()
         self._simulation_start_time = 0
-        self.daemon = True # Allows main program to exit even if this thread is running
+        self.active_tasks = []
 
     def _task_runner(self, task: Task):
         """
@@ -39,12 +39,14 @@ class Simulation(threading.Thread):
         except Exception as e:
             logger.warning(f"[{datetime.now().strftime('%H:%M:%S.%f')}]: Task {task.name} failed with error {e}\n", exc_info=False)
 
-    def run(self):
-        """The main simulation loop. Do not call this directly; use start()"""
+    def start(self):
+        """
+        Main simulation loop
+        """
         self._simulation_start_time = time.monotonic()
         logger.info("Starting simulation...\n")
 
-        while not self._stop_event.is_set():
+        while True:
             next_task = self.task_queue.peek_next_task()
 
             if not next_task:
@@ -56,11 +58,7 @@ class Simulation(threading.Thread):
             # If the next task is in the future, wait for it.
             if next_task.start_time > current_sim_time:
                 wait_duration = next_task.start_time - current_sim_time
-                # Use event.wait() instead of sleep() for immediate interruption
-                self._stop_event.wait(wait_duration)
-                # If wait was interrupted by stop(), re-check the loop condition
-                if self._stop_event.is_set():
-                    break
+                time.sleep(wait_duration)
             
             # Process all tasks that are due to run at the current time
             while True:
@@ -77,11 +75,23 @@ class Simulation(threading.Thread):
                         name=f"Task-{due_task.name}",
                         daemon=True
                     )
+                    self.active_tasks.append(task_thread)
                     task_thread.start()
 
-        logger.info("Simulation loop has been stopped\n")
+        logger.warning("Simulation loop has been stopped!\n")
 
-    def stop(self):
-        """Signals the simulation to stop gracefully."""
-        logger.info("Stop signal received. Shutting down simulation...\n")
-        self._stop_event.set()
+    def wait_for_completion(self, timeout: Optional[float] = None):
+        """
+        Wait for the completion of all tasks
+
+        Attributes:
+            timeout (Optioanl[float]): the maximum allowed time for the completion of all tasks or None to wait indefinitely
+        """
+        if timeout:
+            [task.join() for task in self.active_tasks]
+        else:
+            t_end = time.monotonic() + timeout
+            for task in self.active_tasks:
+                remaining = t_end - time.monotonic()
+                task.join(timeout=remaining)
+

@@ -114,7 +114,7 @@ def teardown(net: Mininet):
     logger.info('Stopping network...\n')
     net.stop()
 
-def start_simulation(net: Mininet, timeout: int = 0):
+def start_simulation(net: Mininet, duration: int = 0):
     """
     Configure and start the simulation
 
@@ -124,7 +124,7 @@ def start_simulation(net: Mininet, timeout: int = 0):
     queue = TaskQueue()
     traffic = TrafficGenerator()
 
-    # TODO:Add tasks
+    # TODO: Generate random tasks
     queue.add_task(start_time=2, callback=traffic.http_request, args=(net.get('h1'), 'www.google.com'))
     queue.add_task(start_time=4, callback=traffic.http_request, args=(net.get('h2'), 'www.amazon.com'))
     queue.add_task(start_time=4, callback=traffic.ftp_request, args=(net.get('h1'), '10.0.0.2', 'file_from_h2.txt'))
@@ -132,19 +132,9 @@ def start_simulation(net: Mininet, timeout: int = 0):
     sim = Simulation(task_queue=queue)
     sim.start()
 
-    try:
-        if timeout == 0:
-            sim.join() # Wait until simulation finishes
-        else:
-            time.sleep(timeout)
-    except KeyboardInterrupt:
-        logger.info('Keyboard interrupt received\n')
-    finally:
-        time.sleep(1)
-        logger.info('Stopping simulation...\n')
-        sim.stop()
-        logger.debug('Wait for simulation thread to fully terminate...\n')
-        sim.join(timeout=2)
+    logger.debug('Wait for simulation thread to fully terminate...\n')
+    time.sleep(1)
+    sim.wait_for_completion(timeout=10)
 
 def run(dot_file_path: str):
     """
