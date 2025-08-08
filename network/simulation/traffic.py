@@ -1,7 +1,9 @@
+import json
 import logging
 import random
 import numpy as np
 from typing import Callable
+from typing import Optional
 from mininet.node import Host
 from mininet.net import Mininet
 from urllib.parse import urlunparse
@@ -15,15 +17,22 @@ class TrafficGenerator:
     """
     A generator of network traffic
     """
-    def __init__(self, net: Mininet):
+    def __init__(self, net: Mininet, website_list_path: str, file_list_path: str):
         """
         Initiailze traffic generation
 
         Attributes:
             net (Mininet): a Mininet network
+            website_list_path (str): path to the JSON website list file
+            file_list_path (str): path to the JSON file list file
         """
         super().__init__()
         self.net = net
+
+        with open(website_list_path, 'r') as f:
+            self.remote_websites = json.load(f)
+        with open(file_list_path, 'r') as f:
+            self.remote_files = json.load(f)
 
     def http_request(self, host: Host, url: str):
         """
@@ -44,7 +53,7 @@ class TrafficGenerator:
             ''
         ))
 
-        logger.info(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
+        logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
         host.cmd(f"curl -s -o /dev/null {complete_url} &") # TODO: handle and log result
 
     def ftp_request(self, host: Host, url: str, filepath: str):
@@ -66,8 +75,81 @@ class TrafficGenerator:
             ''
         ))
 
-        logger.info(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
+        logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
         host.cmd(f"curl -s -o /dev/null {complete_url} &") # TODO: handle and log result
+
+    def _generate_local(self, net: Mininet, timestamp: float) -> Optional[Task]:
+        """
+        Generate random local traffic
+
+        Attributes:
+            net (Mininet): a Mininet network
+            timestamp (float): the time of the initial request in seconds
+
+        Returns:
+            Optional[Task]: the randomly generated task or None on failure
+        """
+
+        # Get random host to make the request
+        host: Host = np.random.choice(net.hosts)
+        server: str = np.random.choice(net.topo.servers)
+
+        task = None
+        choice = np.random.randint(2)
+        if choice == 0:
+            task = Task(
+                start_time=timestamp,
+                callback=self.http_request,
+                name=f"local_http_request-{host.name}-{server}",
+                args=(host, net.get(server).IP())
+            )
+        elif choice == 1:
+            task = Task(
+                start_time=timestamp,
+                callback=self.ftp_request,
+                name=f"local_ftp_request-{host.name}-{server}",
+                args=(host, net.get(server).IP(), f"file_from_{server}.txt")
+            )
+        return task
+    
+    def _generate_remote(self, net: Mininet, timestamp: float):
+        """
+        Generate random remote traffic
+
+        Attributes:
+            net (Mininet): a Mininet network
+            timestamp (float): the time of the initial request in seconds
+
+        Returns:
+            Optional[Task]: the randomly generated task or None on failure
+        """
+
+        # Get random host to make the request
+        host: Host = np.random.choice(net.hosts)
+
+        task = None
+        choice = np.random.randint(2)
+        if choice == 0:
+            url = np.random.choice(self.remote_websites['http_sites'])
+            task = Task(
+                start_time=timestamp,
+                callback=self.http_request,
+                name=f"remote_http_request-{host.name}-{url}",
+                args=(host, url)
+            )
+        elif choice == 1:
+            file = np.random.choice(self.remote_files['ftp_files'])
+            base_url = file['base_url']
+            filepath = file['file_path']
+            
+            task = Task(
+                start_time=timestamp,
+                callback=self.ftp_request,
+                name=f"remote_ftp_request-{host.name}-{base_url}/{filepath}",
+                args=(host, base_url, filepath)
+            )
+        return task
+        pass
 
     def generate(self, mean_requests_count: int, total_duration: float, time_step: float = 0.1) -> TaskQueue:
         """
@@ -97,39 +179,9 @@ class TrafficGenerator:
 
             if request_count > 0:
                 # Assign timestamp for each request
-                t = i * time_step
+                t: float = i * time_step
                 for j in range(request_count):
-                    # TODO: Generate random tasks from random hosts
-                    task = Task(
-                        start_time=t,
-                        name=f"http_request-{i}-{j}",
-                        callback=self.http_request,
-                        args=(self.net.get('h1'), 'www.google.com')
-                    )
+                    # Choose between remote and local hosts
+                    task = self._generate_local(net=self.net, timestamp=t) if np.random.randint(2) else self._generate_remote(net=self.net, timestamp=t)
                     queue.add_task_obj(task)
         return queue
-
-    # def random_request(self) -> Callable:
-    #     """
-    #     Selects and returns a random request
-    #
-    #     Returns:
-    #         Callable: the selected callable request object or None if no other methods are available
-    #     """
-    #     # Get a list of all methods bound to this instance
-    #     all_methods = inspect.getmembers(self, predicate=inspect.ismethod)
-    #
-    #     # The name of the current method, so we can exclude it
-    #     exclude_filter = ('random_request',)
-    #
-    #     # Create a list of candidate methods, filtering out any "private"
-    #     # methods (starting with '_') and the current method itself.
-    #     methods = [
-    #         method for name, method in all_methods
-    #         if not name.startswith('_') and name not in exclude_filter
-    #     ]
-    #
-    #     # Return a random choice from the candidates, or None if the list is empty
-    #     if methods:
-    #         return random.choice(methods)
-    #     return None

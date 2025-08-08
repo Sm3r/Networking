@@ -122,15 +122,17 @@ def start_simulation(net: Mininet):
     """
     sim = Simulation(
         net=net,
+        website_list_path='resources/website-list.json',
+        file_list_path='resources/file-list.json',
         mean_requests_count=35,
         total_duration=10.0
     )
     sim.start()
 
-    logger.info('Wait for simulation thread to fully terminate...\n')
+    logger.info(f"{sim._format_time_pretty(time.monotonic() - sim.simulation_start_time)} Wait for simulation thread to fully terminate...\n")
     time.sleep(1)
     sim.wait_for_completion(timeout=10)
-    logger.info("Simulation terminated!\n")
+    logger.info(f"{sim._format_time_pretty(time.monotonic() - sim.simulation_start_time)} Simulation terminated!\n")
 
 def run(dot_file_path: str):
     """
@@ -166,11 +168,11 @@ def setup_logger():
     """
     # Custom format headers
     log_headers = {
-        logging.DEBUG:   f"{LoggerColors.BOLD} *** [DEBUG]:{LoggerColors.RESET} %(msg)s",
-        logging.INFO:    f"{LoggerColors.BLUE} *** [INFO]:{LoggerColors.RESET} %(msg)s",
-        logging.WARNING: f"{LoggerColors.YELLOW} *** [WARNING]:{LoggerColors.RESET} %(msg)s",
-        logging.ERROR:   f"{LoggerColors.RED} *** [ERROR]:{LoggerColors.RESET} %(msg)s",
-        logging.CRITICAL:f"{LoggerColors.BOLD}{LoggerColors.RED} *** [CRITICAL]:{LoggerColors.RESET} %(msg)s",
+        logging.DEBUG:   f"{LoggerColors.BOLD} *** [DEBUG   ]:{LoggerColors.RESET} %(msg)s",
+        logging.INFO:    f"{LoggerColors.BOLD}{LoggerColors.BLUE} *** [INFO    ]:{LoggerColors.RESET} %(msg)s",
+        logging.WARNING: f"{LoggerColors.BOLD}{LoggerColors.YELLOW} *** [WARNING ]:{LoggerColors.RESET} %(msg)s",
+        logging.ERROR:   f"{LoggerColors.BOLD}{LoggerColors.RED} *** [ERROR   ]:{LoggerColors.RESET} %(msg)s",
+        logging.CRITICAL:f"{LoggerColors.BOLD}{LoggerColors.MAGENTA} *** [CRITICAL]:{LoggerColors.RESET} %(msg)s",
     }
 
     # Set log level
