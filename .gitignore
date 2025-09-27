@@ -419,4 +419,13 @@ STM32Make.make
 #in case git exclude is not used
 .local_gitignore
 
+### PCAP FILES ###
+# Network packet capture files
+*.pcap
+*.pcapng
+*.cap
+**/*.pcap
+**/*.pcapng
+**/*.cap
+
 ## ---------------- END MANUALLY ADDED ---------------- ##

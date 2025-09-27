@@ -125,7 +125,8 @@ def start_simulation(net: Mininet):
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
         mean_requests_count=35,
-        total_duration=10.0
+        total_duration=10.0,
+        real_time=False
     )
     sim.start()
 
