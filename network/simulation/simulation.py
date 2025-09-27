@@ -16,7 +16,7 @@ class Simulation():
     Manages the simulation lifecycle, processing tasks from a TaskQueue
     in a separate thread.
     """
-    def __init__(self, net: Mininet, website_list_path: str, file_list_path: str, mean_requests_count: int, total_duration: float, time_step: float = 0.1, real_time: bool = False):
+    def __init__(self, net: Mininet, website_list_path: str, file_list_path: str, mean_requests_count: int, total_duration: float, time_step: float = 0.1):
         """
         Setup the simulation by generating random requests
 
@@ -27,7 +27,6 @@ class Simulation():
             mean_request_count (int): the total averge number of requests
             total_duration (float): the total duration of the simulation in seconds
             time_step (float): the discretize time step duration in seconds
-            real_time (bool): whether to run simulation in real-time (True) or as fast as possible (False)
         """
         super().__init__()
         traffic = TrafficGenerator(
@@ -44,8 +43,6 @@ class Simulation():
         self.simulation_start_time = 0
         self.t = 0
         self.active_tasks = []
-        self.real_time = real_time
-        self.virtual_time = 0.0
 
     def _format_time(self, t: float) -> str:
         """
@@ -102,25 +99,17 @@ class Simulation():
             if not next_task:
                 return
 
-            if self.real_time:
-                self.t = time.monotonic() - self.simulation_start_time
-                
-                # If the next task is in the future, wait for it.
-                if next_task.start_time > self.t:
-                    wait_duration = next_task.start_time - self.t
-                    time.sleep(wait_duration)
-                    
-                current_time = time.monotonic() - self.simulation_start_time
-            else:
-                # Non-real-time mode: advance virtual time to next task
-                self.virtual_time = next_task.start_time
-                self.t = self.virtual_time
-                current_time = self.virtual_time
+            self.t = time.monotonic() - self.simulation_start_time
+            
+            # If the next task is in the future, wait for it.
+            if next_task.start_time > self.t:
+                wait_duration = next_task.start_time - self.t
+                time.sleep(wait_duration)
             
             # Process all tasks that are due to run at the current time
             while True:
                 task_to_run = self.task_queue.peek_next_task()
-                if not task_to_run or task_to_run.start_time > current_time:
+                if not task_to_run or task_to_run.start_time > (time.monotonic() - self.simulation_start_time):
                     break # No more tasks due right now
                 
                 # Get the task and run it in a new thread for concurrency
@@ -128,7 +117,7 @@ class Simulation():
                 if due_task:
                     task_thread = threading.Thread(
                         target=self._task_runner,
-                        args=(due_task, current_time),
+                        args=(due_task, (time.monotonic() - self.simulation_start_time)),
                         name=f"Task-{due_task.name}",
                         daemon=True
                     )
