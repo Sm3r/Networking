@@ -40,9 +40,11 @@ class Simulation():
             time_step=time_step
         )
 
+        self._lock = threading.Lock()
         self.simulation_start_time = 0
         self.t = 0
         self.active_tasks = []
+
 
     def _format_time(self, t: float) -> str:
         """
@@ -85,6 +87,16 @@ class Simulation():
         except Exception as e:
             logger.warning(f"{self._format_time_pretty(t)} Task {task.name} failed with error {e}\n", exc_info=False)
 
+    def get_time(self) -> float:
+        """
+        Get the simulation time
+
+        Returns:
+            float: the simulation time
+        """
+        with self._lock:
+            return self.t
+
     def start(self):
         """
         Main simulation loop
@@ -99,11 +111,13 @@ class Simulation():
             if not next_task:
                 return
 
-            self.t = time.monotonic() - self.simulation_start_time
+            t = 0
+            with self._lock:
+                t = self.t = time.monotonic() - self.simulation_start_time
             
             # If the next task is in the future, wait for it.
-            if next_task.start_time > self.t:
-                wait_duration = next_task.start_time - self.t
+            if next_task.start_time > t:
+                wait_duration = next_task.start_time - t
                 time.sleep(wait_duration)
             
             # Process all tasks that are due to run at the current time
@@ -124,7 +138,7 @@ class Simulation():
                     self.active_tasks.append(task_thread)
                     task_thread.start()
 
-        logger.warning("{self._format_time_pretty(self.t)} Simulation loop has been stopped!\n")
+        logger.warning("{self._format_time_pretty(t)} Simulation loop has been stopped!\n")
 
     def wait_for_completion(self, timeout: Optional[float] = None):
         """
