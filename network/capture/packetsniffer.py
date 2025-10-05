@@ -77,7 +77,7 @@ class PacketSniffer(threading.Thread):
         )
 
         try:
-            # apply_on_packets is blocking, will be ended by stop_capture method
+            # Save wrapped packets
             for packet in self.capture.sniff_continuously():
                 if self._stop_event.is_set():
                     break

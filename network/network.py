@@ -125,26 +125,28 @@ def start_simulation(net: Mininet):
         net=net,
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
-        mean_requests_count=15,
-        total_duration=2.0
+        mean_requests_count=500,
+        total_duration=120.0,
+        is_real_time=False
     )
-    capture = PacketSniffer(simulation=sim)
+    capture = PacketSniffer(simulation=sim, interface='eth0')
 
     # Starting network capture and simulation
     try:
         capture.start_capture(output_filename='test')
+        # pass
     except Exception as e:
         return
     
     time.sleep(1)
     sim.start()
 
-    logger.info(f"{sim._format_time_pretty(time.monotonic() - sim.simulation_start_time)} Wait for simulation thread to fully terminate...\n")
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
     time.sleep(1)
-    sim.wait_for_completion(timeout=10)
+    sim.wait_for_completion(timeout=5)
     time.sleep(1)
     capture.stop_capture()
-    logger.info(f"{sim._format_time_pretty(time.monotonic() - sim.simulation_start_time)} Simulation terminated!\n")
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 
 def run(dot_file_path: str):
     """
