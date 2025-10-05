@@ -125,16 +125,15 @@ def start_simulation(net: Mininet):
         net=net,
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
-        mean_requests_count=500,
-        total_duration=120.0,
+        mean_requests_count=10,
+        total_duration=10.0,
         is_real_time=False
     )
-    capture = PacketSniffer(simulation=sim, interface='eth0')
+    capture = PacketSniffer(simulation=sim, interface='any')
 
     # Starting network capture and simulation
     try:
         capture.start_capture(output_filename='test')
-        # pass
     except Exception as e:
         return
     
