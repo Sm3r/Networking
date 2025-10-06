@@ -18,6 +18,7 @@ from typing import Tuple
 from simulation.taskqueue import TaskQueue
 from simulation.task import Task
 from simulation.simulation import Simulation
+from capture.packetsniffer import PacketSniffer
 
 logger = logging.getLogger('networking')
 
@@ -124,15 +125,27 @@ def start_simulation(net: Mininet):
         net=net,
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
-        mean_requests_count=35,
-        total_duration=10.0
+        mean_requests_count=10,
+        total_duration=10.0,
+        is_real_time=False
     )
+    capture = PacketSniffer(simulation=sim, interface='any')
+
+    # Starting network capture and simulation
+    try:
+        capture.start_capture(output_filename='test')
+    except Exception as e:
+        return
+    
+    time.sleep(1)
     sim.start()
 
-    logger.info(f"{sim._format_time_pretty(time.monotonic() - sim.simulation_start_time)} Wait for simulation thread to fully terminate...\n")
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
     time.sleep(1)
-    sim.wait_for_completion(timeout=10)
-    logger.info(f"{sim._format_time_pretty(time.monotonic() - sim.simulation_start_time)} Simulation terminated!\n")
+    sim.wait_for_completion(timeout=5)
+    time.sleep(1)
+    capture.stop_capture()
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 
 def run(dot_file_path: str):
     """
@@ -176,7 +189,7 @@ def setup_logger():
     }
 
     # Set log level
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # Create handler with custsom formatter
     handler = logging.StreamHandler()

@@ -54,7 +54,7 @@ class TrafficGenerator:
         ))
 
         logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
-        host.cmd(f"curl -s -o /dev/null {complete_url} &") # TODO: handle and log result
+        host.cmd(f"curl -s -o /dev/null {complete_url} &")
 
     def ftp_request(self, host: Host, url: str, filepath: str):
         """
@@ -76,7 +76,7 @@ class TrafficGenerator:
         ))
 
         logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
-        host.cmd(f"curl -s -o /dev/null {complete_url} &") # TODO: handle and log result
+        host.cmd(f"curl -s -o /dev/null {complete_url} &")
 
     def _generate_local(self, net: Mininet, timestamp: float) -> Optional[Task]:
         """

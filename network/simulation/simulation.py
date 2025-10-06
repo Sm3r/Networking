@@ -16,7 +16,7 @@ class Simulation():
     Manages the simulation lifecycle, processing tasks from a TaskQueue
     in a separate thread.
     """
-    def __init__(self, net: Mininet, website_list_path: str, file_list_path: str, mean_requests_count: int, total_duration: float, time_step: float = 0.1):
+    def __init__(self, net: Mininet, website_list_path: str, file_list_path: str, mean_requests_count: int, total_duration: float, time_step: float = 0.1, is_real_time: bool = False):
         """
         Setup the simulation by generating random requests
 
@@ -27,6 +27,7 @@ class Simulation():
             mean_request_count (int): the total averge number of requests
             total_duration (float): the total duration of the simulation in seconds
             time_step (float): the discretize time step duration in seconds
+            is_real_time (bool): True if the simulation time should match the real time False otherwise
         """
         super().__init__()
         traffic = TrafficGenerator(
@@ -39,10 +40,13 @@ class Simulation():
             total_duration=total_duration,
             time_step=time_step
         )
+        self.is_real_time = is_real_time
 
+        self._lock = threading.Lock()
         self.simulation_start_time = 0
         self.t = 0
         self.active_tasks = []
+
 
     def _format_time(self, t: float) -> str:
         """
@@ -85,6 +89,16 @@ class Simulation():
         except Exception as e:
             logger.warning(f"{self._format_time_pretty(t)} Task {task.name} failed with error {e}\n", exc_info=False)
 
+    def get_time(self) -> float:
+        """
+        Get the simulation time
+
+        Returns:
+            float: the simulation time
+        """
+        with self._lock:
+            return self.t
+
     def start(self):
         """
         Main simulation loop
@@ -98,42 +112,45 @@ class Simulation():
 
             if not next_task:
                 return
+            t = 0
 
-            self.t = time.monotonic() - self.simulation_start_time
-            
-            # If the next task is in the future, wait for it.
-            if next_task.start_time > self.t:
-                wait_duration = next_task.start_time - self.t
-                time.sleep(wait_duration)
-            
-            # Process all tasks that are due to run at the current time
-            while True:
-                task_to_run = self.task_queue.peek_next_task()
-                if not task_to_run or task_to_run.start_time > (time.monotonic() - self.simulation_start_time):
-                    break # No more tasks due right now
-                
-                # Get the task and run it in a new thread for concurrency
-                due_task = self.task_queue.get_next_task()
-                if due_task:
-                    task_thread = threading.Thread(
-                        target=self._task_runner,
-                        args=(due_task, (time.monotonic() - self.simulation_start_time)),
-                        name=f"Task-{due_task.name}",
-                        daemon=True
-                    )
-                    self.active_tasks.append(task_thread)
-                    task_thread.start()
+            # Check if simulation is real time
+            if self.is_real_time:
+                with self._lock:
+                    t = self.t = time.monotonic() - self.simulation_start_time
 
-        logger.warning("{self._format_time_pretty(self.t)} Simulation loop has been stopped!\n")
+                # If the next task is in the future, wait for it.
+                if next_task.start_time > t:
+                    wait_duration = next_task.start_time - t
+                    time.sleep(wait_duration)
+            else:
+                with self._lock:
+                    t = self.t = next_task.start_time
+                # Wait a bit to execute the next task to slow down excessive network traffic
+                time.sleep(50 * 1e-3)
+
+            # Run task
+            due_task = self.task_queue.get_next_task()
+            if due_task:
+                task_thread = threading.Thread(
+                    target=self._task_runner,
+                    args=(due_task, t),
+                    name=f"Task-{due_task.name}",
+                    daemon=True
+                )
+                self.active_tasks.append(task_thread)
+                task_thread.start()
+
+        logger.warning("{self._format_time_pretty(t)} Simulation loop has been stopped!\n")
 
     def wait_for_completion(self, timeout: Optional[float] = None):
         """
         Wait for the completion of all tasks
 
         Attributes:
-            timeout (Optioanl[float]): the maximum allowed time for the completion of all tasks or None to wait indefinitely
+            timeout (Optional[float]): the maximum allowed time for the completion of all tasks or None to wait indefinitely
         """
-        if timeout:
+        if not timeout:
             [task.join() for task in self.active_tasks]
         else:
             t_end = time.monotonic() + timeout
