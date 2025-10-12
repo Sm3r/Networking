@@ -30,6 +30,10 @@ class PacketSniffer(threading.Thread):
         Attributes:
             packet(Any): the pyshark default packet
         """
+        # Only process packets that have IP layer
+        if 'IP' not in packet:
+            return
+            
         # Get packet info
         t = self.simulation.get_time()
         wrapper = PacketWrapper(
