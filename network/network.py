@@ -158,6 +158,7 @@ def run(dot_file_path: str):
 
     logger.info('Starting network...\n')
     net.start()
+    net.topo.set_latency(net)
 
     # It's good practice to wait a moment for the controller and switches to connect.
     logger.info('Wait for controller and switches to connect...\n')
