@@ -30,6 +30,10 @@ class PacketSniffer(threading.Thread):
         Attributes:
             packet(Any): the pyshark default packet
         """
+        # Only process packets that have IP layer
+        if 'IP' not in packet:
+            return
+            
         # Get packet info
         t = self.simulation.get_time()
         wrapper = PacketWrapper(
@@ -64,7 +68,7 @@ class PacketSniffer(threading.Thread):
         # Create csv output file
         try:
             self.csv_handle = open(self.output_file, 'w')
-            header = "virtual_timestamp,real_timestamp,protocols,src_ip,scr_port,dst_ip,dst_port,length\n"
+            header = "virtual_timestamp,real_timestamp,protocols,src_ip,dst_ip,src_port,dst_port,length\n"
             self.csv_handle.write(header)
             logger.debug(f"{self.output_file} created\n")
         except IOError as e:

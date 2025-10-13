@@ -47,7 +47,7 @@ done
 printf "\n  ┗  Starting mininet...\n"
 
 # Create network
-sudo python3 $net_folder/network.py "$dotfile"
+sudo ./venv/bin/python $net_folder/network.py "$dotfile"
 
 printf "${PURPLE} *** [SHELL   ]:${RESET} Clearing everything...\n"
 
