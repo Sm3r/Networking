@@ -422,5 +422,8 @@ STM32Make.make
 # Network capture and data files
 *.pcap
 *.csv
-
+*.png
+*.h5
+*.hdf5
+*.keras
 ## ---------------- END MANUALLY ADDED ---------------- ##
