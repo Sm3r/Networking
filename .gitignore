@@ -426,4 +426,5 @@ STM32Make.make
 *.h5
 *.hdf5
 *.keras
+*.pkl
 ## ---------------- END MANUALLY ADDED ---------------- ##

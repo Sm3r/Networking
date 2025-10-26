@@ -1,10 +1,5 @@
 import pandas as pd
 
-pd.set_option("display.max_columns", None)
-pd.set_option("display.max_rows", None)
-pd.set_option("display.expand_frame_repr", False)
-pd.set_option("display.width", None)
-
 def load_and_prepare_data(csv_file_path: str) -> pd.DataFrame:
     try:
         # Load the dataset
@@ -36,8 +31,7 @@ def load_and_prepare_data(csv_file_path: str) -> pd.DataFrame:
         print(f"An error occurred: {e}")
         raise
 
-def bin_timestamps_and_aggregate_traffic(data: pd.DataFrame, bin_size: float = 1.0) -> pd.DataFrame:
-
+def bin_timestamps_and_aggregate_traffic(data: pd.DataFrame, bin_size: float = 2.0) -> pd.DataFrame:
     data['time_bin'] = (data['virtual_timestamp'] // bin_size) * bin_size
     
     # Create separate dataframes for source and destination traffic

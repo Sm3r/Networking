@@ -4,44 +4,42 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import GRU, Dense, Dropout, BatchNormalization
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TerminateOnNaN
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 
 class NetworkTrafficPredictor:
-    """
-    RNN model with GRU for predicting network traffic patterns
-    """
+    """RNN model with GRU for predicting network traffic patterns."""
     
-    def __init__(self, sequence_length=12, gru_units=128, dropout_rate=0.25, l2_reg=1e-4):
+    def __init__(self, sequence_length=12, gru_units=128, dropout_rate=0.3, learning_rate=0.001):
         """
-        Initialize the network traffic predictor
+        Initialize the network traffic predictor.
         
         Args:
-            sequence_length (int): Number of time steps to look back for prediction
-            gru_units (int): Number of units in GRU layer
-            dropout_rate (float): Dropout rate for regularization
+            sequence_length: Number of time steps to look back
+            gru_units: Number of units in GRU layers
+            dropout_rate: Dropout rate for regularization
+            learning_rate: Initial learning rate
         """
         self.sequence_length = sequence_length
         self.gru_units = gru_units
         self.dropout_rate = dropout_rate
-        self.l2_reg = l2_reg
+        self.learning_rate = learning_rate
         self.model = None
         self.scaler = MinMaxScaler()
-        self.label_encoder = LabelEncoder()
         self.ip_to_index = {}
         self.index_to_ip = {}
         
     def prepare_sequences(self, aggregated_data):
         """
-        Prepare sequences for time series prediction
+        Prepare sequences for time series prediction.
         
         Args:
-            aggregated_data (pd.DataFrame): Aggregated traffic data
+            aggregated_data: Aggregated traffic data DataFrame
             
         Returns:
-            tuple: (X, y, ip_mapping) where X is sequences, y is targets
+            tuple: (X, y, ip_columns, y_time_bins)
         """
         # Ensure data is sorted by time
         aggregated_data = aggregated_data.sort_values('time_bin').reset_index(drop=True)
@@ -69,54 +67,46 @@ class NetworkTrafficPredictor:
         # Scale the data
         scaled_data = self.scaler.fit_transform(pivot_data.values)
         
-        # Create sequences. Note: y corresponds to the time bin at index i
+        # Create sequences
         X, y = [], []
         for i in range(self.sequence_length, len(scaled_data)):
             X.append(scaled_data[i-self.sequence_length:i])
             y.append(scaled_data[i])
 
-        # The time bins corresponding to each y (target) start at position sequence_length
         y_time_bins = pivot_data.index.values[self.sequence_length:]
 
         return np.array(X), np.array(y), pivot_data.columns.tolist(), y_time_bins
     
     def build_model(self, n_features):
         """
-        Build the GRU model
+        Build a simplified GRU model.
         
         Args:
-            n_features (int): Number of features (IPs)
+            n_features: Number of features (IPs)
         """
-        # Deeper GRU stack with an additional layer, batch norm, and L2 regularization
-        from tensorflow.keras.regularizers import l2
         self.model = Sequential([
-            GRU(self.gru_units,
+            # First GRU layer with return sequences
+            GRU(self.gru_units, 
                 return_sequences=True,
-                kernel_regularizer=l2(self.l2_reg),
                 input_shape=(self.sequence_length, n_features)),
             BatchNormalization(),
             Dropout(self.dropout_rate),
-
-            GRU(self.gru_units,
-                return_sequences=True,
-                kernel_regularizer=l2(self.l2_reg)),
+            
+            # Second GRU layer
+            GRU(self.gru_units // 2, return_sequences=False),
             BatchNormalization(),
             Dropout(self.dropout_rate),
-
-            GRU(self.gru_units // 2,
-                return_sequences=False,
-                kernel_regularizer=l2(self.l2_reg)),
-            BatchNormalization(),
-            Dropout(self.dropout_rate),
-
-            Dense(max(64, n_features * 4), activation='relu', kernel_regularizer=l2(self.l2_reg)),
-            Dropout(self.dropout_rate),
-
-            Dense(n_features, activation='relu')
+            
+            # Dense layers
+            Dense(n_features * 2, activation='relu'),
+            Dropout(self.dropout_rate * 0.5),
+            
+            # Output layer (linear activation for regression)
+            Dense(n_features, activation='linear')
         ])
         
-        # Use gradient clipping to stabilize training
-        optimizer = Adam(learning_rate=0.0005, clipnorm=1.0)
+        optimizer = Adam(learning_rate=self.learning_rate, clipnorm=1.0)
+        
         self.model.compile(
             optimizer=optimizer,
             loss='mse',
@@ -127,41 +117,45 @@ class NetworkTrafficPredictor:
     
     def train(self, X, y, validation_split=0.2, epochs=50, batch_size=32):
         """
-        Train the model
+        Train the model.
         
         Args:
-            X (np.array): Input sequences
-            y (np.array): Target values
-            validation_split (float): Fraction of data for validation
-            epochs (int): Number of training epochs
-            batch_size (int): Batch size for training
+            X: Input sequences
+            y: Target values
+            validation_split: Fraction of data for validation
+            epochs: Number of training epochs
+            batch_size: Batch size for training
             
         Returns:
-            History: Training history
+            Training history
         """
         if self.model is None:
             raise ValueError("Model not built. Call build_model() first.")
         
-        # More aggressive callbacks for intensive training
-        from tensorflow.keras.callbacks import LearningRateScheduler
-        
-        def scheduler(epoch, lr):
-            if epoch < 50:
-                return lr
-            elif epoch < 100:
-                return lr * 0.8
-            elif epoch < 150:
-                return lr * 0.6
-            else:
-                return lr * 0.4
-        
         callbacks = [
-            TerminateOnNaN(),
-            EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True, min_delta=1e-6),
-            ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=8, verbose=1, min_lr=1e-7),
-            LearningRateScheduler(scheduler, verbose=1),
-            ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True, verbose=1, save_weights_only=False)
+            EarlyStopping(
+                monitor='val_loss',
+                patience=20,
+                restore_best_weights=True,
+                verbose=1
+            ),
+            ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=0.5,
+                patience=10,
+                verbose=1,
+                min_lr=1e-6
+            ),
+            ModelCheckpoint(
+                'best_model.keras',
+                monitor='val_loss',
+                save_best_only=True,
+                verbose=1
+            )
         ]
+
+        print(f"\nTraining on {len(X)} samples, validation split: {validation_split}")
+        print(f"Batch size: {batch_size}, Max epochs: {epochs}\n")
 
         history = self.model.fit(
             X, y,
@@ -169,7 +163,7 @@ class NetworkTrafficPredictor:
             epochs=epochs,
             batch_size=batch_size,
             verbose=1,
-            shuffle=False,
+            shuffle=False,  # Keep False for time series data
             callbacks=callbacks
         )
         
@@ -177,34 +171,35 @@ class NetworkTrafficPredictor:
     
     def predict(self, X, batch_size=None):
         """
-        Make predictions
+        Make predictions.
         
         Args:
-            X (np.array): Input sequences
+            X: Input sequences
+            batch_size: Batch size for prediction
             
         Returns:
-            np.array: Predictions (guaranteed to be non-negative)
+            Predictions (non-negative, inverse transformed)
         """
         if self.model is None:
             raise ValueError("Model not trained. Call train() first.")
         
-        # default batch_size behaviour is left to Keras if None
         predictions = self.model.predict(X, batch_size=batch_size)
         predictions_scaled = self.scaler.inverse_transform(predictions)
         
-        # Ensure all predictions are non-negative (traffic cannot be negative)
+        # Ensure all predictions are non-negative
         return np.maximum(predictions_scaled, 0)
     
     def evaluate_model(self, X_test, y_test, batch_size=None):
         """
-        Evaluate model performance
+        Evaluate model performance.
         
         Args:
-            X_test (np.array): Test sequences
-            y_test (np.array): Test targets
+            X_test: Test sequences
+            y_test: Test targets
+            batch_size: Batch size for evaluation
             
         Returns:
-            dict: Evaluation metrics
+            dict: Evaluation metrics (mse, mae, rmse, per_ip_mae)
         """
         predictions = self.model.predict(X_test, batch_size=batch_size)
 
@@ -216,7 +211,7 @@ class NetworkTrafficPredictor:
         mae = mean_absolute_error(y_test_inverse, predictions_inverse)
         rmse = np.sqrt(mse)
 
-        # Per-IP MAE to help diagnose which IPs are poorly predicted
+        # Per-IP MAE for detailed analysis
         per_ip_mae = np.mean(np.abs(y_test_inverse - predictions_inverse), axis=0)
 
         return {
