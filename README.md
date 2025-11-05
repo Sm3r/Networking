@@ -42,7 +42,7 @@ Networking/
 This guide will help you set up your environment and run the project step by step.  
 It assumes that you are using the **(mettere info)** virtual machine, which provides a suitable environment for network simulation and experimentation.
 
-## 2. ComNetsEmu Environment
+## 1. ComNetsEmu Environment
 
 First, install the **(stesso nome di prima)** virtual machine.  
 Once it is running, clone this repository **inside the virtual machine** and move into the project directory:
@@ -56,7 +56,7 @@ This directory contains all the scripts and topologies required to run the netwo
 ---
 
 
-## 3. Install Dependencies
+## 2. Install Dependencies
 
 Before running the project, make sure the required system packages are installed.  
 You can do so by running:
@@ -69,7 +69,7 @@ These packages include tools for Python environments, graph visualization, netwo
 
 ---
 
-## 4. Python Virtual Environment
+## 3. Python Virtual Environment
 
 It is recommended to create a virtual environment to keep your Python dependencies isolated from the system.  
 Run the following commands:
@@ -90,7 +90,7 @@ This ensures that all Python dependencies are properly installed and up to date.
 
 ---
 
-## 5. System Update and Wireshark Configuration
+## 4. System Update and Wireshark Configuration
 
 Next, make sure your system is up to date:
 
@@ -121,7 +121,7 @@ sudo reboot now
 ```
 
 ---
-## 6. Running the Project
+## 5. Running the Project
 
 Once the setup is complete, make sure you are inside the **`Networking`** folder.  
 You can then start a network topology using the provided script:
@@ -141,7 +141,6 @@ This will load and execute the specified topology inside ComNetsEmu, allowing yo
 ---
 
 -------------------------------------------------------------------------------------------------
-# Running the Project
 
 ## Dependency Installation
 
@@ -153,21 +152,3 @@ sudo apt install graphviz graphviz-dev mininet ifupdown vsftpd libxml2-dev libxs
 sudo apt install build-essential python3-dev libffi-dev libssl-dev zlib1g-dev libjpeg-dev libpng-dev pkg-config
 ```
 
-### Python Dependencies
-```bash
-python3 -m venv venv
-
-source venv/bin/activate
-
-pip install --upgrade pip
-
-# Install project dependencies
-pip install -r requirements.txt
-
-```
-### Running the Simulation
-
-```bash
-# In the main project directory
-./utils/run.sh topology/simple.dot
-```
