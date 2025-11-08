@@ -11,9 +11,11 @@ class PacketWrapper:
         Attributes:
             packet (Any): a pyshark packet
             virtual_timestamp (float): the simulation time of the captured packet
+            time_of_day (float): the simulation time of the day of the captured packet
         """
         self.real_timestamp = packet.sniff_timestamp
         self.virtual_timestamp = virtual_timestamp
+        self.time_of_day = time_of_day
         self.protocols = packet.frame_info.protocols
         self.length = packet.length
         self.src_ip = self.src_port = self.dst_ip = self.dst_port = 'N/A'
@@ -37,6 +39,6 @@ class PacketWrapper:
             str: the formatted string with the packet info
         """
         return (
-            f"{self.virtual_timestamp:.4f},{self.real_timestamp},{self.protocols},"
+            f"{self.virtual_timestamp:.4f},{self.time_of_day:.4f},{self.real_timestamp},{self.protocols},"
             f"{self.src_ip},{self.dst_ip},{self.src_port},{self.dst_port},{self.length}\n"
         )

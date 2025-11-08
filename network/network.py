@@ -5,6 +5,7 @@ import os
 import random
 import time
 import logging
+import numpy as np
 from mininet import log
 from mininet.cli import CLI
 from mininet.net import Mininet
@@ -123,9 +124,11 @@ def start_simulation(net: Mininet):
     """
     sim = Simulation(
         net=net,
+        traffic_distribution_csv_path='resources/traffic_signal.csv',
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
-        mean_requests_count=10,
+        start_time_of_day=np.random.randint(0, 86400),
+        total_requests_count=30,
         total_duration=10.0,
         is_real_time=False
     )

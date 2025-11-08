@@ -20,12 +20,13 @@ class TaskQueue:
             heapq.heappush(self._tasks, task)
         logger.debug(f"Task '{task.name}' scheduled at T={task.start_time:.2f}s\n")
 
-    def add_task(self, start_time: float, callback: Callable, name: str = None, args: tuple = None, kwargs: dict = None):
+    def add_task(self, start_time: float, simulation_t: float, callback: Callable, name: str = None, args: tuple = None, kwargs: dict = None):
         """
         Adds a new task to the queue.
 
         Attributes:
             start_time (float): the simulation time (in seconds) when the task should run
+            simulation_t (float): the time of the day (in seconds) when the task should run
             callback (Callable): the function to execute for this task
             name (str): an optional name for the task for logging
             args (tuple): a tuple of arguments for the target function
@@ -39,6 +40,7 @@ class TaskQueue:
             name = callback.__name__
 
         task = Task(
+            time_of_day=simulation_t,
             start_time=start_time,
             name=name,
             callback=callback,
