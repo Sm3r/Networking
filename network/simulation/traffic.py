@@ -78,7 +78,7 @@ class TrafficGenerator:
         logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
         host.cmd(f"curl -s -o /dev/null {complete_url} &")
 
-    def _generate_local(self, net: Mininet, simulation_t: float timestamp: float) -> Optional[Task]:
+    def _generate_local(self, net: Mininet, simulation_t: float, timestamp: float) -> Optional[Task]:
         """
         Generate random local traffic
 
@@ -157,7 +157,7 @@ class TrafficGenerator:
         return task
         pass
 
-    def generate(self, total_duration: float, total_request_count: int,
+    def generate(self, total_duration: float, total_requests_count: int,
                  traffic_distribution_csv_path: str, start_time_of_day: float,
                  time_step: float = 0.1) -> TaskQueue:
         """
@@ -179,7 +179,7 @@ class TrafficGenerator:
 
         # Load CSV data
         try:
-            data = np.loadtxt(csv_path, delimiter=',', skiprows=1)
+            data = np.loadtxt(traffic_distribution_csv_path, delimiter=',', skiprows=1)
             timestamp = data[:, 0]
             packet_count = data[:, 1]
         except FileNotFoundError:
@@ -194,7 +194,7 @@ class TrafficGenerator:
         interval_count = int(total_duration / time_step)
         time_steps = np.arange(interval_count) * time_step 
         timestamps = (start_time_of_day + time_steps) % seconds_in_a_day
-        sampled_packet_count = np.interp(sim_times_of_day, timestamps, norm_packet_count, period=seconds_in_a_day)
+        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_a_day)
 
         # Add noise
         noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.05
@@ -203,7 +203,7 @@ class TrafficGenerator:
         
         # Rescale to fit total packet count 
         sum_of_weights = np.sum(noise_packet_count)
-        scaling_factor = total_request_count / sum_of_weights
+        scaling_factor = total_requests_count / sum_of_weights
         rescaled_packet_count = noise_packet_count * scaling_factor
         rescaled_packet_count = np.round(rescaled_packet_count)
 

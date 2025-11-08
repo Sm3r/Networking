@@ -3,6 +3,7 @@ import datetime
 import threading
 import logging
 import pyshark
+import time
 from typing import Any, TextIO
 from simulation.simulation import Simulation
 from capture.packetwrapper import PacketWrapper
@@ -92,6 +93,7 @@ class PacketSniffer(threading.Thread):
         except Exception as e:
             logger.error(f"Forced end of network capture: {e}\n")
         finally:
+            time.sleep(3)
             if self.capture and self.capture.is_live():
                 self.capture.close()
             self._close_csv()

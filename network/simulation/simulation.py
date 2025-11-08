@@ -26,7 +26,7 @@ class Simulation():
             website_list_path (str): path to the JSON website list file
             file_list_path (str): path to the JSON file list file
             start_time_of_day (float): the time of the day when to start the simulation in seconds
-            total_request_count (int): the total number of requests
+            total_requests_count (int): the total number of requests
             total_duration (float): the total duration of the simulation in seconds
             time_step (float): the discretize time step duration in seconds
             is_real_time (bool): True if the simulation time should match the real time False otherwise
@@ -39,7 +39,7 @@ class Simulation():
         )
         self.task_queue = traffic.generate(
             total_duration=total_duration,
-            total_request_count=total_request_count,
+            total_requests_count=total_requests_count,
             traffic_distribution_csv_path=traffic_distribution_csv_path,
             start_time_of_day=start_time_of_day,
             time_step=time_step
