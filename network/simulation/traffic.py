@@ -183,10 +183,10 @@ class TrafficGenerator:
             timestamp = data[:, 0]
             packet_count = data[:, 1]
         except FileNotFoundError:
-            logger.error(f"{traffic_distribution_csv_path} not found")
+            logger.error(f"{traffic_distribution_csv_path} not found\n")
             return queue
         except Exception as e:
-            logger.error(f"Error while reading {traffic_distribution_csv_path}: {e}")
+            logger.error(f"Error while reading {traffic_distribution_csv_path}: {e}\n")
             return queue
 
         # Sample and interpolate traffic data
@@ -195,18 +195,18 @@ class TrafficGenerator:
         time_steps = np.arange(interval_count) * time_step 
         timestamps = (start_time_of_day + time_steps) % seconds_in_a_day
         sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_a_day)
-
+        
         # Add noise
         noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.05
         noise_packet_count = sampled_packet_count + np.random.uniform(-noise_range, noise_range, len(sampled_packet_count))
         noise_packet_count = noise_packet_count.clip(min=0)
-        
+         
         # Rescale to fit total packet count 
         sum_of_weights = np.sum(noise_packet_count)
         scaling_factor = total_requests_count / sum_of_weights
         rescaled_packet_count = noise_packet_count * scaling_factor
-        rescaled_packet_count = np.round(rescaled_packet_count)
-
+        rescaled_packet_count = np.ceil(rescaled_packet_count).astype(int)
+    
         for i in range(interval_count):
             request_count = rescaled_packet_count[i]
         

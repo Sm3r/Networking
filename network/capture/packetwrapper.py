@@ -4,7 +4,7 @@ class PacketWrapper:
     """
     Wrapper for pyshark packets
     """
-    def __init__(self, packet: Any, virtual_timestamp: float):
+    def __init__(self, packet: Any, virtual_timestamp: float, time_of_day: float):
         """
         Extract information from a pyshark packet
 

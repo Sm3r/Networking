@@ -85,15 +85,18 @@ class PacketSniffer(threading.Thread):
 
         try:
             # Save wrapped packets
-            for packet in self.capture.sniff_continuously():
+            while True:
+                for packet in self.capture.sniff_continuously():
+                    if self._stop_event.is_set():
+                        break
+                    self._wrap_packet(packet)
                 if self._stop_event.is_set():
                     break
-                self._wrap_packet(packet)
+                
             # self.capture.apply_on_packets(self._wrap_packet, timeout=5)
         except Exception as e:
             logger.error(f"Forced end of network capture: {e}\n")
         finally:
-            time.sleep(3)
             if self.capture and self.capture.is_live():
                 self.capture.close()
             self._close_csv()

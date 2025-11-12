@@ -122,6 +122,8 @@ class Simulation():
 
         logger.info(f"{self._format_time_pretty(0)} Starting simulation...\n")
 
+        active_task_count = 0
+        active_task_index = 0
         while True:
             next_task = self.task_queue.peek_next_task()
 
@@ -141,8 +143,12 @@ class Simulation():
             else:
                 with self._lock:
                     t = self.t = next_task.start_time
+
                 # Wait a bit to execute the next task to slow down excessive network traffic
-                time.sleep(50 * 1e-3)
+                while active_task_count >= 64:
+                    time.sleep(50 * 1e-3)
+                    if not self.active_tasks[active_task_index].is_alive():
+                        active_task_count -= 1
 
             # Run task
             due_task = self.task_queue.get_next_task()
@@ -155,6 +161,7 @@ class Simulation():
                 )
                 self.active_tasks.append(task_thread)
                 task_thread.start()
+                active_task_count += 1
 
         logger.warning("{self._format_time_pretty(t)} Simulation loop has been stopped!\n")
 

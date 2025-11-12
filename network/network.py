@@ -128,8 +128,8 @@ def start_simulation(net: Mininet):
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
         start_time_of_day=np.random.randint(0, 86400),
-        total_requests_count=30,
-        total_duration=10.0,
+        total_requests_count=200,
+        total_duration=100.0,
         is_real_time=False
     )
     capture = PacketSniffer(simulation=sim, interface='any')
@@ -193,7 +193,7 @@ def setup_logger():
     }
 
     # Set log level
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # Create handler with custsom formatter
     handler = logging.StreamHandler()
