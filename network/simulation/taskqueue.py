@@ -15,6 +15,9 @@ class TaskQueue:
         self._tasks = []
         self._lock = threading.Lock()
 
+    def size(self):
+        return len(self._tasks)
+
     def add_task_obj(self, task: Task):
         with self._lock:
             heapq.heappush(self._tasks, task)

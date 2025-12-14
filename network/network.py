@@ -124,13 +124,14 @@ def start_simulation(net: Mininet):
     """
     sim = Simulation(
         net=net,
-        traffic_distribution_csv_path='resources/traffic_signal.csv',
+        traffic_distribution_csv_path='resources/traffic_signal_10min.csv',
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
         start_time_of_day=np.random.randint(0, 86400),
-        total_requests_count=200,
-        total_duration=100.0,
-        is_real_time=False
+        total_requests_count=1000,
+        total_duration=86400.0,
+        is_real_time=False,
+        time_step = 1
     )
     capture = PacketSniffer(simulation=sim, interface='any')
 
@@ -193,7 +194,7 @@ def setup_logger():
     }
 
     # Set log level
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     # Create handler with custsom formatter
     handler = logging.StreamHandler()

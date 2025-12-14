@@ -193,22 +193,35 @@ class TrafficGenerator:
         seconds_in_a_day = 86400
         interval_count = int(total_duration / time_step)
         time_steps = np.arange(interval_count) * time_step 
-        timestamps = (start_time_of_day + time_steps) % seconds_in_a_day
+        timestamps = (start_time_of_day + time_steps) % seconds_in_a_day 
         sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_a_day)
-        
+ 
         # Add noise
-        noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.05
+        noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.1
         noise_packet_count = sampled_packet_count + np.random.uniform(-noise_range, noise_range, len(sampled_packet_count))
         noise_packet_count = noise_packet_count.clip(min=0)
          
         # Rescale to fit total packet count 
-        sum_of_weights = np.sum(noise_packet_count)
-        scaling_factor = total_requests_count / sum_of_weights
-        rescaled_packet_count = noise_packet_count * scaling_factor
-        rescaled_packet_count = np.ceil(rescaled_packet_count).astype(int)
-    
+        rescaled_packet_count = noise_packet_count - np.min(noise_packet_count)
+        rescaled_packet_count /= np.sum(rescaled_packet_count)
+
+        # Distribute packets based on probability distribution 
+        expected_packet_count = np.round(total_requests_count * rescaled_packet_count).astype(int)
+        diff_packet_count = int(np.floor(total_requests_count - np.sum(expected_packet_count)))
+
+        # Correct packet count error
+        if diff_packet_count != 0:
+            indices = np.argsort(rescaled_packet_count)[::-1]
+
+            for i in range(abs(diff_packet_count)):
+                idx = indices[i % len(indices)]
+                if diff_packet_count > 0:
+                    expected_packet_count[idx] += 1
+                else:
+                    expected_packet_count[idx] -= 1
+
         for i in range(interval_count):
-            request_count = rescaled_packet_count[i]
+            request_count = expected_packet_count[i]
         
             if request_count > 0:
                 simulation_timestamp = time_steps[i]
@@ -218,4 +231,5 @@ class TrafficGenerator:
                     task = self._generate_local(net=self.net, simulation_t=simulation_timestamp, timestamp=t) if np.random.randint(2) else self._generate_remote(net=self.net, simulation_t=simulation_timestamp, timestamp=t)
                     queue.add_task_obj(task)
 
+        logger.info(f"Scheduled tasks: {queue.size()}\n")
         return queue
