@@ -78,13 +78,14 @@ class TrafficGenerator:
         logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
         host.cmd(f"curl -s -o /dev/null {complete_url} &")
 
-    def _generate_local(self, net: Mininet, timestamp: float) -> Optional[Task]:
+    def _generate_local(self, net: Mininet, simulation_t: float, timestamp: float) -> Optional[Task]:
         """
         Generate random local traffic
 
         Attributes:
             net (Mininet): a Mininet network
-            timestamp (float): the time of the initial request in seconds
+            simulation_t (float): the simulation time of the initial request in seconds
+            timestamp (float): the actual time of the day of the initial request in seconds
 
         Returns:
             Optional[Task]: the randomly generated task or None on failure
@@ -98,6 +99,7 @@ class TrafficGenerator:
         choice = np.random.randint(2)
         if choice == 0:
             task = Task(
+                time_of_day=simulation_t,
                 start_time=timestamp,
                 callback=self.http_request,
                 name=f"local_http_request-{host.name}-{server}",
@@ -105,6 +107,7 @@ class TrafficGenerator:
             )
         elif choice == 1:
             task = Task(
+                time_of_day=simulation_t,
                 start_time=timestamp,
                 callback=self.ftp_request,
                 name=f"local_ftp_request-{host.name}-{server}",
@@ -112,12 +115,13 @@ class TrafficGenerator:
             )
         return task
     
-    def _generate_remote(self, net: Mininet, timestamp: float):
+    def _generate_remote(self, net: Mininet, simulation_t: float, timestamp: float):
         """
         Generate random remote traffic
 
         Attributes:
             net (Mininet): a Mininet network
+            simulation_t (float): the simulation time of the initial request in seconds
             timestamp (float): the time of the initial request in seconds
 
         Returns:
@@ -132,6 +136,7 @@ class TrafficGenerator:
         if choice == 0:
             url = np.random.choice(self.remote_websites['http_sites'])
             task = Task(
+                time_of_day=simulation_t,
                 start_time=timestamp,
                 callback=self.http_request,
                 name=f"remote_http_request-{host.name}-{url}",
@@ -143,6 +148,7 @@ class TrafficGenerator:
             filepath = file['file_path']
             
             task = Task(
+                time_of_day=simulation_t,
                 start_time=timestamp,
                 callback=self.ftp_request,
                 name=f"remote_ftp_request-{host.name}-{base_url}/{filepath}",
@@ -151,37 +157,79 @@ class TrafficGenerator:
         return task
         pass
 
-    def generate(self, mean_requests_count: int, total_duration: float, time_step: float = 0.1) -> TaskQueue:
+    def generate(self, total_duration: float, total_requests_count: int,
+                 traffic_distribution_csv_path: str, start_time_of_day: float,
+                 time_step: float = 0.1) -> TaskQueue:
         """
         Generate random realistic traffic based on probability distributions
 
         Attributes:
-            mean_request_count (int): the total averge number of requests to send
             total_duration (float): the total duration in seconds of the interval
+            total_request_count (int): the total number of requests to send
+            traffic_distribution_csv_path (str): CSV file containing the traffic distribution
+            start_time_of_day (float): the time of the day to start sampling from
             time_step (float): the discretize time step duration in seconds
 
         Returns:
             TaskQueue: a queue of randomly distributed random tasks
         """
         queue = TaskQueue()
-        if mean_requests_count <= 0:
+        if total_requests_count <= 0 or total_duration <= 0:
             return queue
 
-        # Calculate number of discretize events
-        interval_count = int(total_duration / time_step)
+        # Load CSV data
+        try:
+            data = np.loadtxt(traffic_distribution_csv_path, delimiter=',', skiprows=1)
+            timestamp = data[:, 0]
+            packet_count = data[:, 1]
+        except FileNotFoundError:
+            logger.error(f"{traffic_distribution_csv_path} not found\n")
+            return queue
+        except Exception as e:
+            logger.error(f"Error while reading {traffic_distribution_csv_path}: {e}\n")
+            return queue
 
-        # Average rate of requests for each interval
-        mean_request_rate = mean_requests_count / interval_count
+        # Sample and interpolate traffic data
+        seconds_in_a_day = 86400
+        interval_count = int(total_duration / time_step)
+        time_steps = np.arange(interval_count) * time_step 
+        timestamps = (start_time_of_day + time_steps) % seconds_in_a_day 
+        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_a_day)
+ 
+        # Add noise
+        noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.1
+        noise_packet_count = sampled_packet_count + np.random.uniform(-noise_range, noise_range, len(sampled_packet_count))
+        noise_packet_count = noise_packet_count.clip(min=0)
+         
+        # Rescale to fit total packet count 
+        rescaled_packet_count = noise_packet_count - np.min(noise_packet_count)
+        rescaled_packet_count /= np.sum(rescaled_packet_count)
+
+        # Distribute packets based on probability distribution 
+        expected_packet_count = np.round(total_requests_count * rescaled_packet_count).astype(int)
+        diff_packet_count = int(np.floor(total_requests_count - np.sum(expected_packet_count)))
+
+        # Correct packet count error
+        if diff_packet_count != 0:
+            indices = np.argsort(rescaled_packet_count)[::-1]
+
+            for i in range(abs(diff_packet_count)):
+                idx = indices[i % len(indices)]
+                if diff_packet_count > 0:
+                    expected_packet_count[idx] += 1
+                else:
+                    expected_packet_count[idx] -= 1
 
         for i in range(interval_count):
-            # Get number of requests based on Poisson distribution
-            request_count = np.random.poisson(lam=mean_request_rate)
-
+            request_count = expected_packet_count[i]
+        
             if request_count > 0:
-                # Assign timestamp for each request
-                t: float = i * time_step
-                for j in range(request_count):
-                    # Choose between remote and local hosts
-                    task = self._generate_local(net=self.net, timestamp=t) if np.random.randint(2) else self._generate_remote(net=self.net, timestamp=t)
+                simulation_timestamp = time_steps[i]
+                t = timestamps[i]
+                for _ in range(request_count):
+                    # Scegli tra task remoto e locale
+                    task = self._generate_local(net=self.net, simulation_t=simulation_timestamp, timestamp=t) if np.random.randint(2) else self._generate_remote(net=self.net, simulation_t=simulation_timestamp, timestamp=t)
                     queue.add_task_obj(task)
+
+        logger.info(f"Scheduled tasks: {queue.size()}\n")
         return queue

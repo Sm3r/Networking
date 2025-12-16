@@ -16,15 +16,17 @@ class Simulation():
     Manages the simulation lifecycle, processing tasks from a TaskQueue
     in a separate thread.
     """
-    def __init__(self, net: Mininet, website_list_path: str, file_list_path: str, mean_requests_count: int, total_duration: float, time_step: float = 0.1, is_real_time: bool = False):
+    def __init__(self, net: Mininet, traffic_distribution_csv_path: str, website_list_path: str, file_list_path: str, start_time_of_day: float, total_requests_count: int, total_duration: float, time_step: float = 0.1, is_real_time: bool = False):
         """
         Setup the simulation by generating random requests
 
         Attributes:
             net (Mininet): a Mininet network
+            traffic_distribution_csv_path (str): path to the CSV file with the traffic distribution over a day
             website_list_path (str): path to the JSON website list file
             file_list_path (str): path to the JSON file list file
-            mean_request_count (int): the total averge number of requests
+            start_time_of_day (float): the time of the day when to start the simulation in seconds
+            total_requests_count (int): the total number of requests
             total_duration (float): the total duration of the simulation in seconds
             time_step (float): the discretize time step duration in seconds
             is_real_time (bool): True if the simulation time should match the real time False otherwise
@@ -36,14 +38,17 @@ class Simulation():
             file_list_path=file_list_path
         )
         self.task_queue = traffic.generate(
-            mean_requests_count=mean_requests_count,
             total_duration=total_duration,
+            total_requests_count=total_requests_count,
+            traffic_distribution_csv_path=traffic_distribution_csv_path,
+            start_time_of_day=start_time_of_day,
             time_step=time_step
         )
         self.is_real_time = is_real_time
 
         self._lock = threading.Lock()
         self.simulation_start_time = 0
+        self.start_time_of_day = start_time_of_day
         self.t = 0
         self.active_tasks = []
 
@@ -99,6 +104,16 @@ class Simulation():
         with self._lock:
             return self.t
 
+    def get_time_of_day(self) -> float:
+        """
+        Get the simulation time
+
+        Returns:
+            float: the simulation time
+        """
+        with self._lock:
+            return self.t + self.start_time_of_day
+
     def start(self):
         """
         Main simulation loop
@@ -107,6 +122,8 @@ class Simulation():
 
         logger.info(f"{self._format_time_pretty(0)} Starting simulation...\n")
 
+        active_task_count = 0
+        active_task_index = 0
         while True:
             next_task = self.task_queue.peek_next_task()
 
@@ -126,8 +143,12 @@ class Simulation():
             else:
                 with self._lock:
                     t = self.t = next_task.start_time
+
                 # Wait a bit to execute the next task to slow down excessive network traffic
-                time.sleep(50 * 1e-3)
+                while active_task_count >= 64:
+                    time.sleep(50 * 1e-3)
+                    if not self.active_tasks[active_task_index].is_alive():
+                        active_task_count -= 1
 
             # Run task
             due_task = self.task_queue.get_next_task()
@@ -140,6 +161,7 @@ class Simulation():
                 )
                 self.active_tasks.append(task_thread)
                 task_thread.start()
+                active_task_count += 1
 
         logger.warning("{self._format_time_pretty(t)} Simulation loop has been stopped!\n")
 

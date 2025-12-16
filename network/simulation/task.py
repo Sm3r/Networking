@@ -11,12 +11,14 @@ class Task:
 
     Attributes:
         start_time (float): the time at which the task should be started
+        time_of_day (float): the time of the day at which the task should be started
         name (str): optional task name for identification
         callback (Callable): function to execute
         args (tuple): tuple of arguments used by the function
         kwargs (dict): dictionary of extra arguments
     """
     start_time: float
+    time_of_day: float
     callback: Callable = field(compare=False)
     name: str = field(compare=False, default="Task")
     args: tuple = field(compare=False, default=())

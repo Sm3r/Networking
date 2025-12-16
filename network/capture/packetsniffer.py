@@ -3,6 +3,7 @@ import datetime
 import threading
 import logging
 import pyshark
+import time
 from typing import Any, TextIO
 from simulation.simulation import Simulation
 from capture.packetwrapper import PacketWrapper
@@ -36,9 +37,11 @@ class PacketSniffer(threading.Thread):
             
         # Get packet info
         t = self.simulation.get_time()
+        time_of_day = self.simulation.get_time_of_day()
         wrapper = PacketWrapper(
             packet = packet,
-            virtual_timestamp = t
+            virtual_timestamp = t,
+            time_of_day = time_of_day
         )
 
         # Write to csv
@@ -68,7 +71,7 @@ class PacketSniffer(threading.Thread):
         # Create csv output file
         try:
             self.csv_handle = open(self.output_file, 'w')
-            header = "virtual_timestamp,real_timestamp,protocols,src_ip,dst_ip,src_port,dst_port,length\n"
+            header = "virtual_timestamp,time_of_day,real_timestamp,protocols,src_ip,dst_ip,src_port,dst_port,length\n"
             self.csv_handle.write(header)
             logger.debug(f"{self.output_file} created\n")
         except IOError as e:
@@ -82,10 +85,14 @@ class PacketSniffer(threading.Thread):
 
         try:
             # Save wrapped packets
-            for packet in self.capture.sniff_continuously():
+            while True:
+                for packet in self.capture.sniff_continuously():
+                    if self._stop_event.is_set():
+                        break
+                    self._wrap_packet(packet)
                 if self._stop_event.is_set():
                     break
-                self._wrap_packet(packet)
+                
             # self.capture.apply_on_packets(self._wrap_packet, timeout=5)
         except Exception as e:
             logger.error(f"Forced end of network capture: {e}\n")

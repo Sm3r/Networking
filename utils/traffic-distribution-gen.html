@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Signal Editor</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- 
+      Load the Chart.js dragdata plugin. 
+      This plugin allows us to drag the points on the chart.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@2.2.5/dist/chartjs-plugin-dragdata.min.js"></script>
+    <!-- Use Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+            color: #f3f4f6; /* text-gray-100 */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Traffic Signal Editor
+            </h1>
+            <p class="mt-2 text-lg text-gray-400">
+                Define a traffic signal using editable control points. 
+                <strong class="text-indigo-400">Drag points</strong> to move them. 
+                <strong class="text-green-400">Double-click the chart</strong> to add a point. 
+                <strong class="text-red-400">Double-click a point</strong> to delete it.
+            </p>
+        </header>
+
+        <!-- Controls Section -->
+        <div class="mb-6 p-6 bg-gray-800 rounded-lg shadow-md">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Y-Axis Controls -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Y-Axis Range (Packet Count)</label>
+                    <div class="flex space-x-2">
+                        <input id="yMin" type="number" value="0" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 px-3 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Min">
+                        <input id="yMax" type="number" value="100" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 px-3 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Max">
+                    </div>
+                </div>
+
+                <!-- X-Interval Controls -->
+                <div>
+                    <label for="xInterval" class="block text-sm font-medium text-gray-300 mb-2">CSV Sampling Interval</label>
+                    <select id="xInterval" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 pl-3 pr-10 text-white focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                        <option value="1">1 Second</option>
+                        <option value="10">10 Seconds</option>
+                        <option value="30">30 Seconds</option>
+                        <option value="60">1 Minute</option>
+                        <option value="300" selected>5 Minutes</option>
+                        <option value="600">10 Minutes</option>
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Actions</label>
+                    <div class="flex space-x-2">
+                        <button id="btnReset" type="button" class="w-full rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500">
+                            Reset Points
+                        </button>
+                        <button id="btnExport" type="button" class="w-full rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                            Export to CSV
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="h-[600px] w-full p-6 bg-gray-800 rounded-lg shadow-md">
+            <canvas id="trafficChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let chartInstance = null;
+            const canvas = document.getElementById('trafficChart');
+            const ctx = canvas.getContext('2d');
+
+            // Input elements
+            const yMinInput = document.getElementById('yMin');
+            const yMaxInput = document.getElementById('yMax');
+            const xIntervalInput = document.getElementById('xInterval');
+            const btnReset = document.getElementById('btnReset');
+            const btnExport = document.getElementById('btnExport');
+
+            // --- Default Data ---
+            const TOTAL_SECONDS = 24 * 60 * 60; // 86400
+            
+            // Initial data points: {x: seconds, y: value}
+            // x is the time in seconds from the start of the day (0 to 86400)
+            let controlPoints = [
+                { x: 0, y: 10 },               // 00:00
+                { x: 21600, y: 10 },          // 06:00 (Start ramp up)
+                { x: 32400, y: 90 },          // 09:00 (Morning peak)
+                { x: 43200, y: 60 },          // 12:00 (Lunch dip)
+                { x: 50400, y: 80 },          // 14:00 (Afternoon peak)
+                { x: 64800, y: 15 },          // 18:00 (End of work)
+                { x: 86400, y: 10 }           // 24:00 (Midnight)
+            ];
+
+            /**
+             * Sorts control points by their x-value (time)
+             */
+            function sortData() {
+                controlPoints.sort((a, b) => a.x - b.x);
+            }
+
+            /**
+             * Updates the Y-axis range on the chart
+             */
+            function updateYAxis() {
+                if (!chartInstance) return;
+                const min = parseFloat(yMinInput.value) || 0;
+                const max = parseFloat(yMaxInput.value) || 100;
+                chartInstance.options.scales.y.min = min;
+                chartInstance.options.scales.y.max = max;
+                chartInstance.update('none');
+            }
+
+            /**
+             * Initializes or re-initializes the Chart.js instance.
+             */
+            function setupChart() {
+                sortData();
+
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Traffic Signal',
+                            data: controlPoints,
+                            borderColor: 'rgb(79, 70, 229)', // indigo-600
+                            backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                            fill: true,
+                            // Use Chart.js's built-in Bézier curve logic
+                            tension: 0.4, 
+                            pointRadius: 6,
+                            pointHitRadius: 15,
+                            pointHoverRadius: 8,
+                            pointBackgroundColor: 'rgb(79, 70, 229)',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Packet Count (Relative)',
+                                    color: '#d1d5db'
+                                },
+                                grid: { color: '#374151' },
+                                ticks: { color: '#d1d5db' },
+                                min: parseFloat(yMinInput.value) || 0,
+                                max: parseFloat(yMaxInput.value) || 100,
+                            },
+                            x: {
+                                type: 'linear', // Use a linear scale for time
+                                title: {
+                                    display: true,
+                                    text: 'Time of Day',
+                                    color: '#d1d5db'
+                                },
+                                grid: { color: '#374151' },
+                                ticks: {
+                                    color: '#d1d5db',
+                                    stepSize: 3600, // Show a tick every hour
+                                    callback: function(value) {
+                                        // Format seconds as HH:00
+                                        const hours = (value / 3600).toString().padStart(2, '0');
+                                        return `${hours}:00`;
+                                    }
+                                },
+                                min: 0,
+                                max: TOTAL_SECONDS
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                enabled: true,
+                                callbacks: {
+                                    // Format tooltip title (X-axis)
+                                    title: function(tooltipItems) {
+                                        const seconds = tooltipItems[0].parsed.x;
+                                        const h = Math.floor(seconds / 3600);
+                                        const m = Math.floor((seconds % 3600) / 60);
+                                        return `Time: ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                                    },
+                                    // Format tooltip body (Y-axis)
+                                    label: function(tooltipItem) {
+                                        return `Value: ${tooltipItem.parsed.y.toFixed(2)}`;
+                                    }
+                                }
+                            },
+                            // --- DragData Plugin ---
+                            dragData: {
+                                enabled: true,
+                                onDragEnd: (e, datasetIndex, index, value) => {
+                                    // Update the data point in our source array
+                                    controlPoints[index] = value;
+                                    sortData();
+                                    chartInstance.update('none'); // Redraw
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            /**
+             * Handles double-clicks on the chart canvas.
+             * Adds a point on the background, removes a point on a point.
+             */
+            function onChartDoubleClick(e) {
+                if (!chartInstance) return;
+
+                const points = chartInstance.getElementsAtEventForMode(e, 'point', { intersect: true }, true);
+
+                if (points.length > 0) {
+                    // --- REMOVE POINT ---
+                    // User double-clicked on an existing point
+                    const pointIndex = points[0].index;
+                    // Don't allow deleting the first or last point
+                    if (pointIndex > 0 && pointIndex < controlPoints.length - 1) {
+                        controlPoints.splice(pointIndex, 1);
+                        chartInstance.update('none');
+                    }
+                } else {
+                    // --- ADD POINT ---
+                    // User double-clicked on the chart background
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    // Get the corresponding X and Y values from the chart scales
+                    const xValue = chartInstance.scales.x.getValueForPixel(x);
+                    const yValue = chartInstance.scales.y.getValueForPixel(y);
+
+                    // Clamp values to be within the chart boundaries
+                    const newX = Math.max(0, Math.min(TOTAL_SECONDS, xValue));
+                    const newY = Math.max(parseFloat(yMinInput.value) || 0, Math.min(parseFloat(yMaxInput.value) || 100, yValue));
+
+                    // Add the new point and re-sort
+                    controlPoints.push({ x: newX, y: newY.toFixed(2) });
+                    sortData();
+                    chartInstance.update('none'); // Redraw
+                }
+            }
+            
+            /**
+             * Catmull-Rom spline interpolation.
+             * This function precisely calculates the value at any point along
+             * the same curve that Chart.js draws.
+             *
+             * @param {number} t - The point in time (x-value) to interpolate.
+             * @param {Array} points - The array of {x, y} control points.
+             * @returns {number} The interpolated y-value.
+             */
+            function getSplineValue(t, points) {
+                if (points.length < 2) return 0;
+
+                // Find the segment t falls into
+                let p1_idx = points.findIndex(p => p.x >= t);
+
+                if (p1_idx === -1) { // t is after the last point
+                    return points[points.length - 1].y;
+                }
+                if (p1_idx === 0) { // t is before the first point
+                    return points[0].y;
+                }
+
+                // We need 4 points for Catmull-Rom: p0, p1, p2, p3
+                // The curve is drawn between p1 and p2
+                const p0_idx = Math.max(0, p1_idx - 2);
+                const p2_idx = p1_idx;
+                const p1_idx_adj = p1_idx - 1; // Correct index for p1
+                const p3_idx = Math.min(points.length - 1, p1_idx + 1);
+                
+                const p0 = points[p0_idx];
+                const p1 = points[p1_idx_adj];
+                const p2 = points[p2_idx];
+                const p3 = points[p3_idx];
+
+                // Normalize t to be [0, 1] within the p1-p2 segment
+                let nt = (t - p1.x) / (p2.x - p1.x);
+                if (isNaN(nt) || !isFinite(nt)) {
+                    nt = 0; // Handle division by zero if p1.x == p2.x
+                }
+                
+                const t2 = nt * nt;
+                const t3 = t2 * nt;
+
+                // Catmull-Rom spline formula (alpha=0.5)
+                const a = 0.5 * (2 * p1.y);
+                const b = 0.5 * (p2.y - p0.y);
+                const c = 0.5 * (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y);
+                const d = 0.5 * (-p0.y + 3 * p1.y - 3 * p2.y + p3.y);
+
+                return a + (b * nt) + (c * t2) + (d * t3);
+            }
+
+
+            /**
+             * Exports the interpolated signal to a CSV file.
+             */
+            function exportToCSV() {
+                const intervalSeconds = parseInt(xIntervalInput.value);
+                let csvContent = "data:text/csv;charset=utf-f,";
+                csvContent += "UnixTimestamp,NormalizedPacketCount\n";
+
+                const sampledData = [];
+                let totalValue = 0;
+
+                // 1. Sample the spline curve at the specified interval
+                for (let ts = 0; ts <= TOTAL_SECONDS; ts += intervalSeconds) {
+                    let value = getSplineValue(ts, controlPoints);
+                    // Clamp values to be within the min/max range (as seen on chart)
+                    const yMin = parseFloat(yMinInput.value) || 0;
+                    const yMax = parseFloat(yMaxInput.value) || 100;
+                    value = Math.max(yMin, Math.min(yMax, value));
+                    // Ensure we don't have negative values after interpolation
+                    value = Math.max(0, value); 
+                    
+                    sampledData.push({ timestamp: ts, value: value });
+                    totalValue += value;
+                }
+
+                // 2. Normalize the sampled data
+                if (totalValue === 0) {
+                    console.warn("Total packet count is zero. Export will contain all zeros.");
+                }
+
+                for (const data of sampledData) {
+                    const normalizedValue = (totalValue === 0) ? 0 : (data.value / totalValue);
+                    csvContent += `${data.timestamp},${normalizedValue}\n`;
+                }
+
+                // 3. Create and download the file
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "bezier_traffic_signal.csv");
+                document.body.appendChild(link); // Required for Firefox
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // --- Event Listeners Setup ---
+            yMinInput.addEventListener('change', updateYAxis);
+            yMaxInput.addEventListener('change', updateYAxis);
+            btnReset.addEventListener('click', () => {
+                // Restore original default points
+                controlPoints = [
+                    { x: 0, y: 10 }, { x: 21600, y: 10 }, { x: 32400, y: 90 },
+                    { x: 43200, y: 60 }, { x: 50400, y: 80 }, { x: 64800, y: 15 },
+                    { x: 86400, y: 10 }
+                ];
+                chartInstance.data.datasets[0].data = controlPoints;
+                chartInstance.update('none');
+            });
+            btnExport.addEventListener('click', exportToCSV);
+            canvas.addEventListener('dblclick', onChartDoubleClick);
+
+
+            // Initial setup
+            setupChart();
+        });
+    </script>
+</body>
+</html>
