@@ -59,7 +59,7 @@ def setup_logger():
     }
 
     # Set log level
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # Create handler with custsom formatter
     handler = logging.StreamHandler()
