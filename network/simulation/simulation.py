@@ -2,7 +2,7 @@ import time
 import logging
 import threading
 from datetime import datetime
-from customlogger.colors import LoggerColors
+from logger import LoggerColors
 from simulation.taskqueue import TaskQueue
 from simulation.task import Task
 from simulation.traffic import TrafficGenerator

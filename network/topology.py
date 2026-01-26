@@ -1,7 +1,7 @@
 import networkx as nx
 import logging
 from mininet.topo import Topo
-from customlogger.colors import LoggerColors
+from logger import LoggerColors
 from typing import Any
 
 logger = logging.getLogger('networking')
