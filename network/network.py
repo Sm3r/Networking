@@ -81,19 +81,6 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
     setup_ftp_servers(net)
     return net, nat
 
-# Destroy Mininet network
-def teardown(net: Mininet):
-
-    logger.debug('Stopping FTP servers...\n')
-    logger.debug('  ┗  ', extra={'no_header': True})
-    for server_name in net.topo.servers:
-        net.get(server_name).cmd('pkill vsftpd')
-        logger.debug(f'{server_name} ', extra={'no_header': True})
-    logger.debug('\n', extra={'no_header': True})
-
-    logger.info('Stopping network...\n')
-    net.stop()
-
 # Configure and start the simulation
 def start_simulation(net: Mininet):
 
@@ -125,6 +112,19 @@ def start_simulation(net: Mininet):
     time.sleep(1)
     capture.stop_capture()
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
+
+# Destroy Mininet network
+def teardown(net: Mininet):
+
+    logger.debug('Stopping FTP servers...\n')
+    logger.debug('  ┗  ', extra={'no_header': True})
+    for server_name in net.topo.servers:
+        net.get(server_name).cmd('pkill vsftpd')
+        logger.debug(f'{server_name} ', extra={'no_header': True})
+    logger.debug('\n', extra={'no_header': True})
+
+    logger.info('Stopping network...\n')
+    net.stop()
 
 # Start the Mininet network and the traffic generation
 def run(dot_file_path: str):

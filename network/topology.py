@@ -46,14 +46,11 @@ class CustomTopology(Topo):
                     'latency': latency
                 })
 
-        logger.info(
-            f"""Topology info:
-  ┣  {LoggerColors.BOLD}Hosts:{LoggerColors.RESET} {len(self.hosts())}
-  ┣  {LoggerColors.BOLD}Servers:{LoggerColors.RESET} {len(self.servers)}
-  ┣  {LoggerColors.BOLD}Links:{LoggerColors.RESET} {len(self.links())}
-  ┗  {LoggerColors.BOLD}Switches:{LoggerColors.RESET} {len(self.switches())}
-"""
-        )
+        logger.info(f"""Topology info:
+        ┣  {LoggerColors.BOLD}Hosts:{LoggerColors.RESET} {len(self.hosts())}
+        ┣  {LoggerColors.BOLD}Servers:{LoggerColors.RESET} {len(self.servers)}
+        ┣  {LoggerColors.BOLD}Links:{LoggerColors.RESET} {len(self.links())}
+        ┗  {LoggerColors.BOLD}Switches:{LoggerColors.RESET} {len(self.switches())}""")
 
     # Set the latency for each link of the network
     def set_latency(self, net):
