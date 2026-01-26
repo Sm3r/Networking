@@ -12,10 +12,7 @@ from typing import Optional
 logger = logging.getLogger('networking')
 
 class Simulation():
-    """
-    Manages the simulation lifecycle, processing tasks from a TaskQueue
-    in a separate thread.
-    """
+
     def __init__(self, net: Mininet, traffic_distribution_csv_path: str, website_list_path: str, file_list_path: str, start_time_of_day: float, total_requests_count: int, total_duration: float, time_step: float = 0.1, is_real_time: bool = False):
         """
         Setup the simulation by generating random requests
@@ -32,20 +29,10 @@ class Simulation():
             is_real_time (bool): True if the simulation time should match the real time False otherwise
         """
         super().__init__()
-        traffic = TrafficGenerator(
-            net=net,
-            website_list_path=website_list_path,
-            file_list_path=file_list_path
-        )
-        self.task_queue = traffic.generate(
-            total_duration=total_duration,
-            total_requests_count=total_requests_count,
-            traffic_distribution_csv_path=traffic_distribution_csv_path,
-            start_time_of_day=start_time_of_day,
-            time_step=time_step
-        )
+        traffic = TrafficGenerator(net, website_list_path, file_list_path)
+        self.task_queue = traffic.generate(total_duration, total_requests_count, traffic_distribution_csv_path, start_time_of_day, time_step)
+        
         self.is_real_time = is_real_time
-
         self._lock = threading.Lock()
         self.simulation_start_time = 0
         self.start_time_of_day = start_time_of_day
@@ -53,29 +40,14 @@ class Simulation():
         self.active_tasks = []
 
 
+    # Formats monotonic time into a 'MM:SS.ss' string
     def _format_time(self, t: float) -> str:
-        """
-        Formats monotonic time into a 'MM:SS.ss' string
-
-        Attributes:
-            t (float): the total elapsed time in seconds
-
-        Returns:
-            str: the formatted time string
-        """
+        
         minutes, seconds = divmod(t, 60)
         return f"{int(minutes):02d}:{seconds:05.2f}"
 
     def _format_time_pretty(self, t: float) -> str:
-        """
-        Formats monotonic time in a pretty way to be logged
 
-        Attributes:
-            t (float): the total elapsed time in seconds
-
-        Returns:
-            str: the formatted time string
-        """
         return f"{LoggerColors.CYAN}[{self._format_time(t)}]{LoggerColors.RESET}"
 
 
@@ -95,29 +67,17 @@ class Simulation():
             logger.warning(f"{self._format_time_pretty(t)} Task {task.name} failed with error {e}\n", exc_info=False)
 
     def get_time(self) -> float:
-        """
-        Get the simulation time
 
-        Returns:
-            float: the simulation time
-        """
         with self._lock:
             return self.t
 
     def get_time_of_day(self) -> float:
-        """
-        Get the simulation time
 
-        Returns:
-            float: the simulation time
-        """
         with self._lock:
             return self.t + self.start_time_of_day
 
     def start(self):
-        """
-        Main simulation loop
-        """
+
         self.simulation_start_time = time.monotonic()
 
         logger.info(f"{self._format_time_pretty(0)} Starting simulation...\n")
@@ -169,15 +129,8 @@ class Simulation():
                 task_thread.start()
                 active_task_count += 1
 
-        logger.warning("{self._format_time_pretty(t)} Simulation loop has been stopped!\n")
-
     def wait_for_completion(self, timeout: Optional[float] = None):
-        """
-        Wait for the completion of all tasks
 
-        Attributes:
-            timeout (Optional[float]): the maximum allowed time for the completion of all tasks or None to wait indefinitely
-        """
         if not timeout:
             [task.join() for task in self.active_tasks]
         else:
