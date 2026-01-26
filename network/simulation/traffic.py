@@ -99,16 +99,16 @@ class TrafficGenerator:
         choice = np.random.randint(2)
         if choice == 0:
             task = Task(
-                time_of_day=simulation_t,
-                start_time=timestamp,
+                time_of_day=timestamp,
+                start_time=simulation_t,
                 callback=self.http_request,
                 name=f"local_http_request-{host.name}-{server}",
                 args=(host, net.get(server).IP())
             )
         elif choice == 1:
             task = Task(
-                time_of_day=simulation_t,
-                start_time=timestamp,
+                time_of_day=timestamp,
+                start_time=simulation_t,
                 callback=self.ftp_request,
                 name=f"local_ftp_request-{host.name}-{server}",
                 args=(host, net.get(server).IP(), f"file_from_{server}.txt")
@@ -122,7 +122,7 @@ class TrafficGenerator:
         Attributes:
             net (Mininet): a Mininet network
             simulation_t (float): the simulation time of the initial request in seconds
-            timestamp (float): the time of the initial request in seconds
+            timestamp (float): the actual time of the day of the initial request in seconds
 
         Returns:
             Optional[Task]: the randomly generated task or None on failure
@@ -132,30 +132,29 @@ class TrafficGenerator:
         host: Host = np.random.choice(net.hosts)
 
         task = None
-        choice = np.random.randint(2)
-        if choice == 0:
+        choice = np.random.randint(10)
+        if choice < 8:
             url = np.random.choice(self.remote_websites['http_sites'])
             task = Task(
-                time_of_day=simulation_t,
-                start_time=timestamp,
+                time_of_day=timestamp,
+                start_time=simulation_t,
                 callback=self.http_request,
                 name=f"remote_http_request-{host.name}-{url}",
                 args=(host, url)
             )
-        elif choice == 1:
+        else:
             file = np.random.choice(self.remote_files['ftp_files'])
             base_url = file['base_url']
             filepath = file['file_path']
             
             task = Task(
-                time_of_day=simulation_t,
-                start_time=timestamp,
+                time_of_day=timestamp,
+                start_time=simulation_t,
                 callback=self.ftp_request,
                 name=f"remote_ftp_request-{host.name}-{base_url}/{filepath}",
                 args=(host, base_url, filepath)
             )
         return task
-        pass
 
     def generate(self, total_duration: float, total_requests_count: int,
                  traffic_distribution_csv_path: str, start_time_of_day: float,
@@ -228,8 +227,17 @@ class TrafficGenerator:
                 t = timestamps[i]
                 for _ in range(request_count):
                     # Scegli tra task remoto e locale
-                    task = self._generate_local(net=self.net, simulation_t=simulation_timestamp, timestamp=t) if np.random.randint(2) else self._generate_remote(net=self.net, simulation_t=simulation_timestamp, timestamp=t)
+                    task = self._generate_local(net=self.net, simulation_t=simulation_timestamp, timestamp=t) if np.random.randint(10) < 7 else self._generate_remote(net=self.net, simulation_t=simulation_timestamp, timestamp=t)
                     queue.add_task_obj(task)
 
         logger.info(f"Scheduled tasks: {queue.size()}\n")
+        if logger.level >= logging.DEBUG:
+            scheduled_filename = "scheduled-task.log"
+            logger.debug(f"Logging scheduled task to {scheduled_filename}\n")
+            
+            scheduled_log = open(scheduled_filename, "w")
+            scheduled_log.write("start_time,time_of_day,name\n");
+            for task in queue.dump():
+                scheduled_log.write(f"{task.start_time},{task.time_of_day},{task.name}\n")
+            scheduled_log.close()
         return queue

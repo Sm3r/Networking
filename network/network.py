@@ -86,13 +86,13 @@ def start_simulation(net: Mininet):
 
     sim = Simulation(
         net=net,
-        traffic_distribution_csv_path='resources/traffic_signal_10min.csv',
+        traffic_distribution_csv_path='resources/traffic_signal.csv',
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
-        start_time_of_day=np.random.randint(0, 86400),
-        total_requests_count=1000,
-        total_duration=86400.0,
-        is_real_time=False,
+        start_time_of_day=56 * 600,#np.random.randint(0, 86400),
+        total_requests_count=600,# 500000,
+        total_duration=10 * 60,# 3 * 24 * 60 * 60, # 3 days
+        is_real_time=True,
         time_step = 1
     )
     capture = PacketSniffer(simulation=sim, interface='any')

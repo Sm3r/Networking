@@ -1,7 +1,7 @@
 import logging
 import threading
 import heapq
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 from simulation.task import Task
 
 logger = logging.getLogger('networking')
@@ -17,6 +17,9 @@ class TaskQueue:
 
     def size(self):
         return len(self._tasks)
+
+    def dump(self) -> List[Task]:
+        return self._tasks
 
     def add_task_obj(self, task: Task):
         with self._lock:
