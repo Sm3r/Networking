@@ -124,10 +124,15 @@ class Simulation():
 
         active_task_count = 0
         active_task_index = 0
+        due_task_filename = "due-task.log"
+        due_task_log = open(due_task_filename, "w")
+        due_task_log.write("simulation_time,start_time,time_of_day,name\n");
         while True:
             next_task = self.task_queue.peek_next_task()
 
             if not next_task:
+                due_task_log.close()
+                time.sleep(1)
                 return
             t = 0
 
@@ -145,13 +150,14 @@ class Simulation():
                     t = self.t = next_task.start_time
 
                 # Wait a bit to execute the next task to slow down excessive network traffic
-                while active_task_count >= 64:
-                    time.sleep(50 * 1e-3)
+                while active_task_count >= 8:
+                    time.sleep(1500 * 1e-3)
                     if not self.active_tasks[active_task_index].is_alive():
                         active_task_count -= 1
 
             # Run task
             due_task = self.task_queue.get_next_task()
+            due_task_log.write(f"{t},{due_task.start_time},{due_task.time_of_day},{due_task.name}\n")
             if due_task:
                 task_thread = threading.Thread(
                     target=self._task_runner,
