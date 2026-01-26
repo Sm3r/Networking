@@ -1,35 +1,26 @@
-#!/usr/bin/env python3
 
-import sys
 import os
-import random
+import sys
 import time
-import logging
-import numpy as np
-from mininet import log
-from mininet.cli import CLI
-from mininet.net import Mininet
-from mininet.nodelib import NAT
-from mininet.node import RemoteController, OVSKernelSwitch
-from mininet.link import TCLink
-from topology import CustomTopology
-from customlogger.colors import LoggerColors
-from customlogger.formatter import CustomFormatter
 from typing import Tuple
-from simulation.taskqueue import TaskQueue
-from simulation.task import Task
-from simulation.simulation import Simulation
+
+import numpy as np
+from mininet.cli import CLI
+from mininet.link import TCLink
+from mininet.net import Mininet
+from mininet.node import RemoteController, OVSKernelSwitch
+from mininet.nodelib import NAT
+
 from capture.packetsniffer import PacketSniffer
+from logger import setup_logger
+from simulation.simulation import Simulation
+from topology import CustomTopology
 
-logger = logging.getLogger('networking')
+logger = setup_logger()
 
+#  Setup the DNS for each host of the network
 def setup_dns(net: Mininet):
-    """
-    Setup the DNS for each host of the network
 
-    Attributes:
-        net (Mininet): a Mininet network
-    """
     logger.info('Configuring DNS for hosts...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
     for host in net.hosts:
@@ -42,13 +33,9 @@ def setup_dns(net: Mininet):
         logger.debug(f'{host.name} ', extra={'no_header': True})
     logger.debug('\n', extra={'no_header': True})
 
+# Setup and start an FTP server for each marked host
 def setup_ftp_servers(net: Mininet):
-    """
-    Setup and start an FTP server for each marked host
 
-    Attributes:
-        net (Mininet): a Mininet network
-    """
     logger.info(f'Configuring FTP servers...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
     for server_name in net.topo.servers:
@@ -74,13 +61,9 @@ def setup_ftp_servers(net: Mininet):
         if result.strip() == '':
             logger.error(f'{server_name} FTP server is not running\n')
 
+# Generate and configure a Mininet network describing the topology from a Graphviz dot file
 def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
-    """
-    Generate and configure a Mininet network describing the topology from a Graphviz dot file
-
-    Attributes:
-        dot_file_path (str): path of the dot file
-    """
+    
     topo = CustomTopology(dot_file_path)
     controller = RemoteController('ryuController', ip='127.0.0.1', port=6653)
 
@@ -98,13 +81,9 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
     setup_ftp_servers(net)
     return net, nat
 
+# Destroy Mininet network
 def teardown(net: Mininet):
-    """
-    Destroy a Mininet network
 
-    Attributes:
-        net (Mininet): a Mininet network
-    """
     logger.debug('Stopping FTP servers...\n')
     logger.debug('  ┗  ', extra={'no_header': True})
     for server_name in net.topo.servers:
@@ -115,13 +94,9 @@ def teardown(net: Mininet):
     logger.info('Stopping network...\n')
     net.stop()
 
+# Configure and start the simulation
 def start_simulation(net: Mininet):
-    """
-    Configure and start the simulation
 
-    Attributes:
-        net (Mininet): a Mininet network
-    """
     sim = Simulation(
         net=net,
         traffic_distribution_csv_path='resources/traffic_signal_10min.csv',
@@ -151,27 +126,15 @@ def start_simulation(net: Mininet):
     capture.stop_capture()
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 
+# Start the Mininet network and the traffic generation
 def run(dot_file_path: str):
-    """
-    Start the Mininet network and the traffic generation
 
-    Attributes:
-        dot_file_path (str): path of the dot file
-    """
     net, nat = setup(dot_file_path)
 
     logger.info('Starting network...\n')
     net.start()
     net.topo.set_latency(net)
-
-    # It's good practice to wait a moment for the controller and switches to connect.
-    logger.info('Wait for controller and switches to connect...\n')
-    wait_time = 2
-    logger.debug('  ┗  ', extra={'no_header': True})
-    for i in range(wait_time):
-        logger.debug(f'{wait_time - i}..', extra={'no_header': True})
-        time.sleep(1)
-    logger.debug(f'\n', extra={'no_header': True})
+    time.sleep(2)
     
     logger.info(f'Network started!\n')
     start_simulation(net)
@@ -179,32 +142,6 @@ def run(dot_file_path: str):
     # CLI(net) 
 
     teardown(net)
-
-def setup_logger():
-    """
-    Configure the custom logger
-    """
-    # Custom format headers
-    log_headers = {
-        logging.DEBUG:   f"{LoggerColors.BOLD} *** [DEBUG   ]:{LoggerColors.RESET} %(msg)s",
-        logging.INFO:    f"{LoggerColors.BOLD}{LoggerColors.BLUE} *** [INFO    ]:{LoggerColors.RESET} %(msg)s",
-        logging.WARNING: f"{LoggerColors.BOLD}{LoggerColors.YELLOW} *** [WARNING ]:{LoggerColors.RESET} %(msg)s",
-        logging.ERROR:   f"{LoggerColors.BOLD}{LoggerColors.RED} *** [ERROR   ]:{LoggerColors.RESET} %(msg)s",
-        logging.CRITICAL:f"{LoggerColors.BOLD}{LoggerColors.MAGENTA} *** [CRITICAL]:{LoggerColors.RESET} %(msg)s",
-    }
-
-    # Set log level
-    logger.setLevel(logging.DEBUG)
-
-    # Create handler with custsom formatter
-    handler = logging.StreamHandler()
-    handler.terminator = ''
-    custom_formatter = CustomFormatter(formats=log_headers)
-    handler.setFormatter(custom_formatter)
-
-    # Add custom handler
-    if not logger.handlers:
-        logger.addHandler(handler)
 
 if __name__ == '__main__':
     # Check for the topology file argument
@@ -218,6 +155,5 @@ if __name__ == '__main__':
         print(f"Error: Topology file not found at '{topology_file}'")
         sys.exit(1)
     
-    setup_logger()
     # log.setLogLevel('info')
     run(topology_file)
