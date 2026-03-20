@@ -84,32 +84,37 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
 # Configure and start the simulation
 def start_simulation(net: Mininet):
 
+    DAYS            = 3
+    PACKETS_PER_MIN = 5          # average across the traffic signal curve
+    total_duration  = DAYS * 24 * 60 * 60                     # virtual seconds
+    total_requests  = PACKETS_PER_MIN * DAYS * 24 * 60        # ~30240
+
     sim = Simulation(
         net=net,
         traffic_distribution_csv_path='resources/traffic_signal.csv',
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
-        start_time_of_day=56 * 600,#np.random.randint(0, 86400),
-        total_requests_count=600,# 500000,
-        total_duration=10 * 60,# 3 * 24 * 60 * 60, # 3 days
-        is_real_time=True,
-        time_step = 1
+        start_time_of_day=np.random.randint(0, 86400),
+        total_requests_count=total_requests,
+        total_duration=total_duration,
+        is_real_time=False,   # advance virtual time as fast as the network allows
+        time_step=60          # 1-min buckets are enough for a multi-day span
     )
     capture = PacketSniffer(simulation=sim, interface='any')
 
     # Starting network capture and simulation
     try:
-        capture.start_capture(output_filename='test')
+        capture.start_capture(output_filename='simple')
     except Exception as e:
         return
-    
-    time.sleep(1)
+
+    time.sleep(2)
     sim.start()
 
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
-    time.sleep(1)
-    sim.wait_for_completion(timeout=5)
-    time.sleep(1)
+    time.sleep(5)
+    sim.wait_for_completion(timeout=None)   # wait as long as needed
+    time.sleep(5)
     capture.stop_capture()
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 

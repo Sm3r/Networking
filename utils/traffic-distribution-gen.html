@@ -364,7 +364,7 @@
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "bezier_traffic_signal.csv");
+                link.setAttribute("download", "traffic_signal.csv");
                 document.body.appendChild(link); // Required for Firefox
                 link.click();
                 document.body.removeChild(link);
