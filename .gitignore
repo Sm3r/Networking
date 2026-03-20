@@ -419,5 +419,6 @@ STM32Make.make
 *.pcap
 /*.csv
 /data/*.csv
+*.png
 
 ## ---------------- END MANUALLY ADDED ---------------- ##

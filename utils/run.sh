@@ -16,7 +16,7 @@ BOLD="\033[1m"
 printf "${PURPLE} *** [SHELL   ]:${RESET} Starting Ryu Manager...\n"
 
 # Start controller
-ryu-manager $net_folder/controller.py &> "$ryu_log" &
+./venv/bin/ryu-manager $net_folder/controller.py &> "$ryu_log" &
 printf "${PURPLE} *** [SHELL   ]:${RESET} ${BOLD}Ryu Manager Started!${RESET}\n"
 printf "  ┗  Logging to ${BOLD}$ryu_log${RESET}...\n"
 
@@ -45,6 +45,9 @@ for ((i = 0; i <= $wait_time_s; i++)); do
     fi
 done
 printf "\n  ┗  Starting mininet...\n"
+
+# Ensure stale interfaces/bridges from previous runs are removed
+sudo mn -c > /dev/null 2>&1
 
 # Create network
 sudo ./venv/bin/python $net_folder/network.py "$dotfile"

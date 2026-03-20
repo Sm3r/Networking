@@ -84,10 +84,10 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
 # Configure and start the simulation
 def start_simulation(net: Mininet):
 
-    DAYS            = 3
-    PACKETS_PER_MIN = 5          # average across the traffic signal curve
+    DAYS            = 1                            # simulate a week of traffic
+    PACKETS_PER_MIN = 2          # average across the traffic signal curve
     total_duration  = DAYS * 24 * 60 * 60                     # virtual seconds
-    total_requests  = PACKETS_PER_MIN * DAYS * 24 * 60        # ~30240
+    total_requests  = PACKETS_PER_MIN * DAYS * 24 * 60       # ~30240
 
     sim = Simulation(
         net=net,
