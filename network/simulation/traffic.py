@@ -1,17 +1,26 @@
 import json
 import logging
-import random
 import numpy as np
-from typing import Callable
+from dataclasses import dataclass
+from typing import List
 from typing import Optional
 from mininet.node import Host
 from mininet.net import Mininet
 from urllib.parse import urlunparse
-from http.client import responses
-from simulation.taskqueue import TaskQueue
-from simulation.task import Task
 
 logger = logging.getLogger('networking')
+
+
+@dataclass(frozen=True)
+class PlaybookEntry:
+    """
+    A precomputed traffic action to execute at an absolute simulation timestamp.
+    """
+    start_time: float
+    time_of_day: float
+    name: str
+    host: Host
+    command: str
 
 class TrafficGenerator:
     """
@@ -34,14 +43,8 @@ class TrafficGenerator:
         with open(file_list_path, 'r') as f:
             self.remote_files = json.load(f)
 
-    def http_request(self, host: Host, url: str):
-        """
-        Send a single HTTP requests from an host
+    def _build_http_command(self, url: str) -> str:
 
-        Attributes:
-            host (Host): the host from which the request is sent
-            url (str): the target url for the request
-        """
         scheme = 'https'
         path = ''
         complete_url = urlunparse((
@@ -53,18 +56,10 @@ class TrafficGenerator:
             ''
         ))
 
-        logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
-        host.cmd(f"curl -s -o /dev/null {complete_url} &")
+        return f"curl -s -o /dev/null {complete_url}"
 
-    def ftp_request(self, host: Host, url: str, filepath: str):
-        """
-        Send multiple FTP requests for a certain amount of time
+    def _build_ftp_command(self, url: str, filepath: str) -> str:
 
-        Attributes:
-            host (Host): the host from which the request is sent
-            url (str): the target url for the request
-            filepath (str): the path of the file to download
-        """
         scheme = 'ftp'
         complete_url = urlunparse((
             scheme,
@@ -75,10 +70,9 @@ class TrafficGenerator:
             ''
         ))
 
-        logger.debug(f"Starting {scheme.upper()} request from {host} to {complete_url}\n")
-        host.cmd(f"curl -s -o /dev/null {complete_url} &")
+        return f"curl -s -o /dev/null {complete_url}"
 
-    def _generate_local(self, net: Mininet, simulation_t: float, timestamp: float) -> Optional[Task]:
+    def _generate_local(self, net: Mininet, simulation_t: float, timestamp: float) -> Optional[PlaybookEntry]:
         """
         Generate random local traffic
 
@@ -88,7 +82,7 @@ class TrafficGenerator:
             timestamp (float): the actual time of the day of the initial request in seconds
 
         Returns:
-            Optional[Task]: the randomly generated task or None on failure
+            Optional[PlaybookEntry]: the randomly generated action or None on failure
         """
 
         # Get random host to make the request
@@ -98,20 +92,20 @@ class TrafficGenerator:
         task = None
         choice = np.random.randint(2)
         if choice == 0:
-            task = Task(
+            task = PlaybookEntry(
                 time_of_day=timestamp,
                 start_time=simulation_t,
-                callback=self.http_request,
                 name=f"local_http_request-{host.name}-{server}",
-                args=(host, net.get(server).IP())
+                host=host,
+                command=self._build_http_command(net.get(server).IP())
             )
         elif choice == 1:
-            task = Task(
+            task = PlaybookEntry(
                 time_of_day=timestamp,
                 start_time=simulation_t,
-                callback=self.ftp_request,
                 name=f"local_ftp_request-{host.name}-{server}",
-                args=(host, net.get(server).IP(), f"file_from_{server}.txt")
+                host=host,
+                command=self._build_ftp_command(net.get(server).IP(), f"file_from_{server}.txt")
             )
         return task
     
@@ -125,7 +119,7 @@ class TrafficGenerator:
             timestamp (float): the actual time of the day of the initial request in seconds
 
         Returns:
-            Optional[Task]: the randomly generated task or None on failure
+            Optional[PlaybookEntry]: the randomly generated action or None on failure
         """
 
         # Get random host to make the request
@@ -135,30 +129,30 @@ class TrafficGenerator:
         choice = np.random.randint(10)
         if choice < 8:
             url = np.random.choice(self.remote_websites['http_sites'])
-            task = Task(
+            task = PlaybookEntry(
                 time_of_day=timestamp,
                 start_time=simulation_t,
-                callback=self.http_request,
                 name=f"remote_http_request-{host.name}-{url}",
-                args=(host, url)
+                host=host,
+                command=self._build_http_command(url)
             )
         else:
             file = np.random.choice(self.remote_files['ftp_files'])
             base_url = file['base_url']
             filepath = file['file_path']
             
-            task = Task(
+            task = PlaybookEntry(
                 time_of_day=timestamp,
                 start_time=simulation_t,
-                callback=self.ftp_request,
                 name=f"remote_ftp_request-{host.name}-{base_url}/{filepath}",
-                args=(host, base_url, filepath)
+                host=host,
+                command=self._build_ftp_command(base_url, filepath)
             )
         return task
 
     def generate(self, total_duration: float, total_requests_count: int,
                  traffic_distribution_csv_path: str, start_time_of_day: float,
-                 time_step: float = 0.1) -> TaskQueue:
+                 time_step: float = 0.1) -> List[PlaybookEntry]:
         """
         Generate random realistic traffic based on probability distributions
 
@@ -170,11 +164,11 @@ class TrafficGenerator:
             time_step (float): the discretize time step duration in seconds
 
         Returns:
-            TaskQueue: a queue of randomly distributed random tasks
+            List[PlaybookEntry]: a sorted static playbook
         """
-        queue = TaskQueue()
+        playbook: List[PlaybookEntry] = []
         if total_requests_count <= 0 or total_duration <= 0:
-            return queue
+            return playbook
 
         # Load CSV data
         try:
@@ -183,10 +177,10 @@ class TrafficGenerator:
             packet_count = data[:, 1]
         except FileNotFoundError:
             logger.error(f"{traffic_distribution_csv_path} not found\n")
-            return queue
+            return playbook
         except Exception as e:
             logger.error(f"Error while reading {traffic_distribution_csv_path}: {e}\n")
-            return queue
+            return playbook
 
         # Sample and interpolate traffic data
         seconds_in_a_day = 86400
@@ -228,16 +222,19 @@ class TrafficGenerator:
                 for _ in range(request_count):
                     # Scegli tra task remoto e locale
                     task = self._generate_local(net=self.net, simulation_t=simulation_timestamp, timestamp=t) if np.random.randint(10) < 7 else self._generate_remote(net=self.net, simulation_t=simulation_timestamp, timestamp=t)
-                    queue.add_task_obj(task)
+                    if task:
+                        playbook.append(task)
 
-        logger.info(f"Scheduled tasks: {queue.size()}\n")
+        playbook.sort(key=lambda item: item.start_time)
+
+        logger.info(f"Scheduled tasks: {len(playbook)}\n")
         if logger.level >= logging.DEBUG:
             scheduled_filename = "scheduled-task.log"
             logger.debug(f"Logging scheduled task to {scheduled_filename}\n")
             
             scheduled_log = open(scheduled_filename, "w")
             scheduled_log.write("start_time,time_of_day,name\n");
-            for task in queue.dump():
+            for task in playbook:
                 scheduled_log.write(f"{task.start_time},{task.time_of_day},{task.name}\n")
             scheduled_log.close()
-        return queue
+        return playbook

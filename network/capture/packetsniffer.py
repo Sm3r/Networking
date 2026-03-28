@@ -131,7 +131,17 @@ class PacketSniffer(threading.Thread):
 
         logger.info("Stopping file capture...\n")
         self._stop_event.set()
+
+        # Force-unblock `sniff_continuously()` if it is waiting for packets.
+        try:
+            if self.capture and self.capture.is_live():
+                self.capture.close()
+        except Exception:
+            pass
+
         self._logger.stop_log()
 
         # Wait for capture to complete
-        self.join()
+        self.join(timeout=5)
+        if self.is_alive():
+            logger.warning("Capture thread did not terminate in time\n")

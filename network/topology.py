@@ -1,23 +1,16 @@
 import networkx as nx
 import logging
 from mininet.topo import Topo
-from customlogger.colors import LoggerColors
+from logger import LoggerColors
 from typing import Any
 
 logger = logging.getLogger('networking')
 
 class CustomTopology(Topo):
-    """
-    The topology of the network
-    """
+    
+    # Parse the dot file and create the network topology
     def __init__(self, path: str, **opts: Any):
-        """
-        Parse the dot file and create the network topology
 
-        Attributes:
-            path (string): path of the network topology graphviz dot file
-            opts (Any): additional arguments
-        """
         super().__init__(**opts)
         self.servers = []
         self.latencies = []
@@ -26,13 +19,9 @@ class CustomTopology(Topo):
         graph = nx.nx_agraph.read_dot(path)
         self.create_topology(graph)
 
+    # Generate the topology of the network
     def create_topology(self, graph: nx.Graph):
-        """
-        Generate the topology of the network
 
-        Attributes:
-            graph (nx.Graph): NetworkX graph representing the topology of the network
-        """
         # Add nodes
         for node, attrs in graph.nodes(data=True):
             if node.startswith('s'):
@@ -57,22 +46,15 @@ class CustomTopology(Topo):
                     'latency': latency
                 })
 
-        logger.info(
-            f"""Topology info:
-  ┣  {LoggerColors.BOLD}Hosts:{LoggerColors.RESET} {len(self.hosts())}
-  ┣  {LoggerColors.BOLD}Servers:{LoggerColors.RESET} {len(self.servers)}
-  ┣  {LoggerColors.BOLD}Links:{LoggerColors.RESET} {len(self.links())}
-  ┗  {LoggerColors.BOLD}Switches:{LoggerColors.RESET} {len(self.switches())}
-"""
-        )
+        logger.info(f"""Topology info:
+        ┣  {LoggerColors.BOLD}Hosts:{LoggerColors.RESET} {len(self.hosts())}
+        ┣  {LoggerColors.BOLD}Servers:{LoggerColors.RESET} {len(self.servers)}
+        ┣  {LoggerColors.BOLD}Links:{LoggerColors.RESET} {len(self.links())}
+        ┗  {LoggerColors.BOLD}Switches:{LoggerColors.RESET} {len(self.switches())}""")
 
+    # Set the latency for each link of the network
     def set_latency(self, net):
-        """
-        Set the latency for each link of the network
 
-        Attributes:
-            net (Mininet): a Mininet network
-        """
         for target in self.latencies:
             h1 = net.get(target['host1'])
             h2 = net.get(target['host2'])

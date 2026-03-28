@@ -1,22 +1,18 @@
 import time
+import sched
 import logging
 import threading
-from datetime import datetime
-from customlogger.colors import LoggerColors
-from simulation.taskqueue import TaskQueue
-from simulation.task import Task
-from simulation.traffic import TrafficGenerator
+from concurrent.futures import ThreadPoolExecutor, wait
+from logger import LoggerColors
+from simulation.traffic import PlaybookEntry, TrafficGenerator
 from mininet.net import Mininet
-from typing import Optional
+from typing import List, Optional
 
 logger = logging.getLogger('networking')
 
 class Simulation():
-    """
-    Manages the simulation lifecycle, processing tasks from a TaskQueue
-    in a separate thread.
-    """
-    def __init__(self, net: Mininet, traffic_distribution_csv_path: str, website_list_path: str, file_list_path: str, start_time_of_day: float, total_requests_count: int, total_duration: float, time_step: float = 0.1, is_real_time: bool = False):
+
+    def __init__(self, net: Mininet, traffic_distribution_csv_path: str, website_list_path: str, file_list_path: str, start_time_of_day: float, total_requests_count: int, total_duration: float, time_step: float = 0.1, is_real_time: bool = False, max_workers: int = 20):
         """
         Setup the simulation by generating random requests
 
@@ -32,54 +28,64 @@ class Simulation():
             is_real_time (bool): True if the simulation time should match the real time False otherwise
         """
         super().__init__()
-        traffic = TrafficGenerator(
-            net=net,
-            website_list_path=website_list_path,
-            file_list_path=file_list_path
-        )
-        self.task_queue = traffic.generate(
-            total_duration=total_duration,
-            total_requests_count=total_requests_count,
-            traffic_distribution_csv_path=traffic_distribution_csv_path,
-            start_time_of_day=start_time_of_day,
-            time_step=time_step
-        )
+        traffic = TrafficGenerator(net, website_list_path, file_list_path)
+        self.playbook: List[PlaybookEntry] = traffic.generate(total_duration, total_requests_count, traffic_distribution_csv_path, start_time_of_day, time_step)
+        
         self.is_real_time = is_real_time
-
         self._lock = threading.Lock()
         self.simulation_start_time = 0
         self.start_time_of_day = start_time_of_day
         self.t = 0
-        self.active_tasks = []
+        self.scheduler_t = 0
+        self._virtual_anchor_t = 0.0
+        self._virtual_anchor_wall = 0.0
+        self.max_workers = max_workers
+        self.executor = ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix='simulation-worker')
+        self._futures = []
+
+        self.scheduler = sched.scheduler(self._clock_time, self._clock_sleep)
+        self._due_task_log = None
 
 
+    # Formats monotonic time into a 'MM:SS.ss' string
     def _format_time(self, t: float) -> str:
-        """
-        Formats monotonic time into a 'MM:SS.ss' string
-
-        Attributes:
-            t (float): the total elapsed time in seconds
-
-        Returns:
-            str: the formatted time string
-        """
+        
         minutes, seconds = divmod(t, 60)
         return f"{int(minutes):02d}:{seconds:05.2f}"
 
     def _format_time_pretty(self, t: float) -> str:
-        """
-        Formats monotonic time in a pretty way to be logged
 
-        Attributes:
-            t (float): the total elapsed time in seconds
-
-        Returns:
-            str: the formatted time string
-        """
         return f"{LoggerColors.CYAN}[{self._format_time(t)}]{LoggerColors.RESET}"
 
 
-    def _task_runner(self, task: Task, t: float):
+    def _clock_time(self) -> float:
+
+        if self.is_real_time:
+            return time.monotonic() - self.simulation_start_time
+        with self._lock:
+            return self.scheduler_t
+
+    def _clock_sleep(self, duration: float):
+
+        if duration <= 0:
+            return
+
+        if self.is_real_time:
+            time.sleep(duration)
+            with self._lock:
+                now = time.monotonic() - self.simulation_start_time
+                self.scheduler_t = now
+                self.t = now
+            return
+
+        with self._lock:
+            self.scheduler_t += duration
+            # Keep a wall-clock anchor so virtual time can continue to progress
+            # even when there are no more scheduled events.
+            self._virtual_anchor_t = self.scheduler_t
+            self._virtual_anchor_wall = time.monotonic()
+
+    def _task_runner(self, task: PlaybookEntry, t: float):
         """
         A wrapper to run each task in its own thread and handle errors
 
@@ -88,101 +94,76 @@ class Simulation():
             t (float): the current time
         """
         try:
-            logger.info(f"{self._format_time_pretty(t)} Starting task {task.name}...\n")
-            task.callback(*task.args, **task.kwargs)
-            logger.debug(f"{self._format_time_pretty(t)} Succesfully executed task {task.name}\n")
+            with self._lock:
+                self.t = max(self.t, task.start_time)
+
+            logger.info(f"{self._format_time_pretty(task.start_time)} Starting task {task.name}...\n")
+            task.host.popen(task.command, shell=True)
+            logger.debug(f"{self._format_time_pretty(task.start_time)} Succesfully executed task {task.name}\n")
         except Exception as e:
-            logger.warning(f"{self._format_time_pretty(t)} Task {task.name} failed with error {e}\n", exc_info=False)
+            logger.warning(f"{self._format_time_pretty(task.start_time)} Task {task.name} failed with error {e}\n", exc_info=False)
+
+    def _dispatch_task(self, task: PlaybookEntry):
+
+        if self._due_task_log:
+            self._due_task_log.write(f"{task.start_time},{task.start_time},{task.time_of_day},{task.name}\n")
+
+        future = self.executor.submit(self._task_runner, task, task.start_time)
+        self._futures.append(future)
 
     def get_time(self) -> float:
-        """
-        Get the simulation time
 
-        Returns:
-            float: the simulation time
-        """
         with self._lock:
+            if self.is_real_time or self.simulation_start_time == 0:
+                return self.t
+
+            # In virtual mode, continue advancing from the latest scheduler anchor
+            # using wall-clock time so packet timestamps do not freeze after the
+            # final scheduled event is dispatched.
+            now = time.monotonic()
+            current_t = self._virtual_anchor_t + max(0.0, now - self._virtual_anchor_wall)
+            if current_t > self.t:
+                self.t = current_t
             return self.t
 
     def get_time_of_day(self) -> float:
-        """
-        Get the simulation time
 
-        Returns:
-            float: the simulation time
-        """
-        with self._lock:
-            return self.t + self.start_time_of_day
+        return self.get_time() + self.start_time_of_day
 
     def start(self):
-        """
-        Main simulation loop
-        """
+
         self.simulation_start_time = time.monotonic()
+        with self._lock:
+            self.t = 0
+            self.scheduler_t = 0
+            self._virtual_anchor_t = 0
+            self._virtual_anchor_wall = self.simulation_start_time
 
         logger.info(f"{self._format_time_pretty(0)} Starting simulation...\n")
 
-        active_task_count = 0
-        active_task_index = 0
         due_task_filename = "due-task.log"
-        due_task_log = open(due_task_filename, "w")
-        due_task_log.write("simulation_time,start_time,time_of_day,name\n");
-        while True:
-            next_task = self.task_queue.peek_next_task()
+        self._due_task_log = open(due_task_filename, "w")
+        self._due_task_log.write("simulation_time,start_time,time_of_day,name\n")
 
-            if not next_task:
-                due_task_log.close()
-                time.sleep(1)
-                return
-            t = 0
+        for task in self.playbook:
+            self.scheduler.enterabs(task.start_time, priority=1, action=self._dispatch_task, argument=(task,))
 
-            # Check if simulation is real time
-            if self.is_real_time:
-                with self._lock:
-                    t = self.t = time.monotonic() - self.simulation_start_time
+        self.scheduler.run()
 
-                # If the next task is in the future, wait for it.
-                if next_task.start_time > t:
-                    wait_duration = next_task.start_time - t
-                    time.sleep(wait_duration)
-            else:
-                with self._lock:
-                    t = self.t = next_task.start_time
-
-                # Wait a bit to execute the next task to slow down excessive network traffic
-                while active_task_count >= 8:
-                    time.sleep(1500 * 1e-3)
-                    if not self.active_tasks[active_task_index].is_alive():
-                        active_task_count -= 1
-
-            # Run task
-            due_task = self.task_queue.get_next_task()
-            due_task_log.write(f"{t},{due_task.start_time},{due_task.time_of_day},{due_task.name}\n")
-            if due_task:
-                task_thread = threading.Thread(
-                    target=self._task_runner,
-                    args=(due_task, t),
-                    name=f"Task-{due_task.name}",
-                    daemon=True
-                )
-                self.active_tasks.append(task_thread)
-                task_thread.start()
-                active_task_count += 1
-
-        logger.warning("{self._format_time_pretty(t)} Simulation loop has been stopped!\n")
+        self._due_task_log.close()
+        self._due_task_log = None
 
     def wait_for_completion(self, timeout: Optional[float] = None):
-        """
-        Wait for the completion of all tasks
 
-        Attributes:
-            timeout (Optional[float]): the maximum allowed time for the completion of all tasks or None to wait indefinitely
-        """
-        if not timeout:
-            [task.join() for task in self.active_tasks]
-        else:
-            t_end = time.monotonic() + timeout
-            for task in self.active_tasks:
-                remaining = t_end - time.monotonic()
-                task.join(timeout=remaining)
+        if not self._futures:
+            self.executor.shutdown(wait=True)
+            return
+
+        if timeout is None:
+            wait(self._futures)
+            self.executor.shutdown(wait=True)
+            return
+
+        wait(self._futures, timeout=timeout)
+        self.executor.shutdown(wait=False)
 
