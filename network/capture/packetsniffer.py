@@ -56,7 +56,8 @@ class PacketSniffer(threading.Thread):
         """
         logger.debug(f"Listening to interface {self.interface}...\n")
         self.capture = pyshark.LiveCapture(
-            interface = self.interface
+            interface = self.interface,
+            bpf_filter="net 10.0.0.0 mask 255.255.255.0 and not icmp" # Filter packets not sent by mininet hosts
         )
 
         try:
