@@ -84,10 +84,10 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
 # Configure and start the simulation
 def start_simulation(net: Mininet):
 
-    DAYS            = 1                            # simulate a week of traffic
-    PACKETS_PER_MIN = 2          # average across the traffic signal curve
-    total_duration  = DAYS * 24 * 60 * 60                     # virtual seconds
-    total_requests  = PACKETS_PER_MIN * DAYS * 24 * 60       # ~30240
+    HOURS = 1
+    AVG_PACKETS_PER_MINUTE = 30
+    total_duration  = HOURS * 60 * 60
+    total_requests  = (AVG_PACKETS_PER_MINUTE / 60) * total_duration
 
     sim = Simulation(
         net=net,
@@ -97,8 +97,8 @@ def start_simulation(net: Mininet):
         start_time_of_day=np.random.randint(0, 86400),
         total_requests_count=total_requests,
         total_duration=total_duration,
-        is_real_time=False,   # advance virtual time as fast as the network allows
-        time_step=60          # 1-min buckets are enough for a multi-day span
+        is_real_time=True,   # advance virtual time as fast as the network allows
+        time_step=1
     )
     capture = PacketSniffer(simulation=sim, interface='any')
 

@@ -183,14 +183,14 @@ class TrafficGenerator:
             return playbook
 
         # Sample and interpolate traffic data
-        seconds_in_a_day = 86400
+        seconds_in_an_hour = 60 * 60;
         interval_count = int(total_duration / time_step)
         time_steps = np.arange(interval_count) * time_step 
-        timestamps = (start_time_of_day + time_steps) % seconds_in_a_day 
-        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_a_day)
+        timestamps = (start_time_of_day + time_steps) % seconds_in_an_hour 
+        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_an_hour)
  
         # Add noise
-        noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.1
+        noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.06
         noise_packet_count = sampled_packet_count + np.random.uniform(-noise_range, noise_range, len(sampled_packet_count))
         noise_packet_count = noise_packet_count.clip(min=0)
          
