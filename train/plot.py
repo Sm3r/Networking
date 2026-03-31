@@ -2,8 +2,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from collections import defaultdict
+import sys
 
-DATA_FILE = Path(__file__).parent.parent / "data" / "clean_dataset.csv"
+if len(sys.argv) != 2:
+    print(f"Usage: {sys.argv[0]} dataset.csv")
+    exit(0)
+
+filename = Path(sys.argv[1])
+
+DATA_FILE = Path(__file__).parent.parent / filename
 SIGNAL_FILE = Path(__file__).parent.parent / "resources" / "traffic_signal.csv"
 BIN = "1s"
 CHUNKSIZE = 100_000
@@ -24,11 +31,11 @@ def plot_traffic():
     ax.set_title("Overall traffic over time")
     ax.set_xlabel("Time of Day (HH:MM:SS)")
     ax.set_ylabel(f"Bytes / {BIN}")
-    
+
     # Format x-axis as time of day (HH:MM:SS)
     ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%H:%M:%S'))
 
-    out = Path(__file__).parent.parent / "traffic.png"
+    out = Path(__file__).parent.parent / "plots" / filename.stem
     fig.tight_layout()
     fig.savefig(out, dpi=150)
     print(f"Saved to {out}")
