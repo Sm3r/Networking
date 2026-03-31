@@ -85,7 +85,7 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
 def start_simulation(net: Mininet):
 
     HOURS = 1
-    AVG_PACKETS_PER_MINUTE = 30
+    AVG_PACKETS_PER_MINUTE = 720
     total_duration  = HOURS * 60 * 60
     total_requests  = (AVG_PACKETS_PER_MINUTE / 60) * total_duration
 
@@ -108,7 +108,7 @@ def start_simulation(net: Mininet):
     except Exception as e:
         return
 
-    time.sleep(2)
+    time.sleep(5)
     sim.start()
 
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
