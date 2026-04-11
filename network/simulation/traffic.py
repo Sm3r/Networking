@@ -8,6 +8,11 @@ from mininet.node import Host
 from mininet.net import Mininet
 from urllib.parse import urlunparse
 
+import matplotlib.pyplot as plt
+from collections import defaultdict
+import pandas as pd
+from datetime import timedelta
+
 logger = logging.getLogger('networking')
 
 
@@ -150,6 +155,17 @@ class TrafficGenerator:
             )
         return task
 
+    def plot_distribution(self, timestamps, distribution, filename, plotname):
+        samples = defaultdict(int)
+        for i in range(len(timestamps)):
+           samples[timedelta(seconds=int(timestamps[i]))] = distribution[i]
+        fig, ax = plt.subplots(figsize=(12, 4))
+        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%H:%M:%S'))
+        pd.Series(samples).sort_index().plot(ax=ax)
+        ax.set_title(plotname)
+        fig.tight_layout()
+        fig.savefig(filename, dpi=150)
+
     def generate(self, total_duration: float, total_requests_count: int,
                  traffic_distribution_csv_path: str, start_time_of_day: float,
                  time_step: float = 0.1) -> List[PlaybookEntry]:
@@ -181,26 +197,35 @@ class TrafficGenerator:
         except Exception as e:
             logger.error(f"Error while reading {traffic_distribution_csv_path}: {e}\n")
             return playbook
+        
 
         # Sample and interpolate traffic data
-        seconds_in_a_day = 86400
+        seconds_in_an_hour = 60 * 60;
         interval_count = int(total_duration / time_step)
         time_steps = np.arange(interval_count) * time_step 
-        timestamps = (start_time_of_day + time_steps) % seconds_in_a_day 
-        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_a_day)
+        timestamps = (start_time_of_day + time_steps) % seconds_in_an_hour 
+        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_an_hour)
+
+        self.plot_distribution(timestamps, sampled_packet_count, "plots/samples.png", "Sampled distribution")
  
         # Add noise
-        noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.1
+        noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.04
         noise_packet_count = sampled_packet_count + np.random.uniform(-noise_range, noise_range, len(sampled_packet_count))
         noise_packet_count = noise_packet_count.clip(min=0)
+
+        self.plot_distribution(timestamps, noise_packet_count, "plots/noise_samples.png", "Sampled distribution + noise (sum != 1)")
          
         # Rescale to fit total packet count 
         rescaled_packet_count = noise_packet_count - np.min(noise_packet_count)
         rescaled_packet_count /= np.sum(rescaled_packet_count)
 
+        self.plot_distribution(timestamps, rescaled_packet_count, "plots/rescaled_samples.png", "Rescaled distribution (sum == 1)")
+
         # Distribute packets based on probability distribution 
         expected_packet_count = np.round(total_requests_count * rescaled_packet_count).astype(int)
         diff_packet_count = int(np.floor(total_requests_count - np.sum(expected_packet_count)))
+        
+        self.plot_distribution(timestamps, expected_packet_count, "plots/expected_samples.png", "Scheduled packet count")
 
         # Correct packet count error
         if diff_packet_count != 0:
