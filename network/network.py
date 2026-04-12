@@ -15,6 +15,7 @@ from capture.packetsniffer import PacketSniffer
 from logger import setup_logger
 from simulation.simulation import Simulation
 from topology import CustomTopology
+from train.realtime_predict import LivePredictor
 
 logger = setup_logger()
 
@@ -118,6 +119,45 @@ def start_simulation(net: Mininet):
     capture.stop_capture()
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 
+def start_simulation_live_prediction(net: Mininet):
+
+    HOURS = 1
+    AVG_PACKETS_PER_MINUTE = 720
+    total_duration  = HOURS * 60 * 60
+    total_requests  = (AVG_PACKETS_PER_MINUTE / 60) * total_duration
+
+    sim = Simulation(
+        net=net,
+        traffic_distribution_csv_path='resources/traffic_signal.csv',
+        website_list_path='resources/website-list.json',
+        file_list_path='resources/file-list.json',
+        start_time_of_day=np.random.randint(0, 86400),
+        total_requests_count=total_requests,
+        total_duration=total_duration,
+        is_real_time=True,
+        time_step=1
+    )
+    capture = PacketSniffer(simulation=sim, interface='any')
+    predictor = LivePredictor(sniffer=capture, simulation=sim)
+
+    # Starting network capture and simulation
+    try:
+        capture.start_capture(output_filename='simple')
+    except Exception as e:
+        return
+
+    time.sleep(5)
+    sim.start()
+    predictor.start()
+
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
+    time.sleep(5)
+    sim.wait_for_completion(timeout=None)
+    time.sleep(5)
+    capture.stop_capture()
+    predictor.stop()
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
+    
 # Destroy Mininet network
 def teardown(net: Mininet):
 
@@ -142,7 +182,7 @@ def run(dot_file_path: str):
     time.sleep(2)
     
     logger.info(f'Network started!\n')
-    start_simulation(net)
+    start_simulation_live_prediction(net)
 
     # CLI(net) 
 
