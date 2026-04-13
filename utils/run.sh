@@ -46,16 +46,24 @@ for ((i = 0; i <= $wait_time_s; i++)); do
 done
 printf "\n  ┗  Starting mininet...\n"
 
+if command -v xhost >/dev/null 2>&1 && [ -n "$DISPLAY" ]; then
+    xhost +SI:localuser:root >/dev/null 2>&1 || true
+fi
+
 # Ensure stale interfaces/bridges from previous runs are removed
 sudo mn -c > /dev/null 2>&1
 
 # Create network
-sudo ./venv/bin/python $net_folder/network.py "$dotfile"
+sudo -E ./venv/bin/python $net_folder/network.py "$dotfile"
 
 printf "${PURPLE} *** [SHELL   ]:${RESET} Clearing everything...\n"
 
 # Clear everything
 sudo mn -c
 pkill ryu-manager
+
+if command -v xhost >/dev/null 2>&1 && [ -n "$DISPLAY" ]; then
+    xhost -SI:localuser:root >/dev/null 2>&1 || true
+fi
 
 printf "${PURPLE} *** [SHELL   ]:${RESET} Goodbye!!! (;_;)\n"

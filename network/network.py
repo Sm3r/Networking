@@ -2,9 +2,11 @@
 import os
 import sys
 import time
+import threading
 from typing import Tuple
-
 import numpy as np
+import multiprocessing as mp
+
 from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.net import Mininet
@@ -15,7 +17,13 @@ from capture.packetsniffer import PacketSniffer
 from logger import setup_logger
 from simulation.simulation import Simulation
 from topology import CustomTopology
-from train.realtime_predict import LivePredictor
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from train.realtime_predict import LivePredictor, realtime_plot_worker
 
 logger = setup_logger()
 
@@ -110,10 +118,12 @@ def start_simulation(net: Mininet):
         return
 
     time.sleep(5)
-    sim.start()
+    sim_thread = threading.Thread(target=sim.start, name='simulation-main')
+    sim_thread.start()
 
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
     time.sleep(5)
+    sim_thread.join()
     sim.wait_for_completion(timeout=None)   # wait as long as needed
     time.sleep(5)
     capture.stop_capture()
@@ -147,15 +157,32 @@ def start_simulation_live_prediction(net: Mininet):
         return
 
     time.sleep(5)
-    sim.start()
+
+    # 1. Start the separate Plotting Process
+    plot_queue = mp.Queue()
+    plot_process = mp.Process(target=realtime_plot_worker, args=(plot_queue,))
+    plot_process.start()
+
+    # 2. Start the Predictor Thread, passing it the queue
+    predictor = LivePredictor(sniffer=capture, simulation=sim, plot_queue=plot_queue)
     predictor.start()
+    
+    # Start simulation
+    sim.start()
 
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
     time.sleep(5)
     sim.wait_for_completion(timeout=None)
     time.sleep(5)
-    capture.stop_capture()
+    
+    # 3. Clean Shutdown
     predictor.stop()
+    capture.stop_capture()
+    
+    # Send the kill signal to the plot window and wait for it to close
+    plot_queue.put((None, None, None))
+    plot_process.join(timeout=5)
+    
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
     
 # Destroy Mininet network

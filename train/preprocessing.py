@@ -61,8 +61,8 @@ def prepare_network_data(data_dir, force_rebuild=False):
 
     ### Scaling
     scaler = MinMaxScaler()
-    train_data_scaled = scaler.fit_transform(train_data[['length']])
-    test_data_scaled = scaler.transform(test_data[['length']])
+    train_data_scaled = scaler.fit_transform(train_data[['length']].values)
+    test_data_scaled = scaler.transform(test_data[['length']].values)
 
     ### Saving the cleaned data and the scaler
     np.save(train_file, train_data_scaled)

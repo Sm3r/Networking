@@ -200,7 +200,7 @@ class TrafficGenerator:
         
 
         # Sample and interpolate traffic data
-        seconds_in_an_hour = 60 * 60;
+        seconds_in_an_hour = 60 * 60
         interval_count = int(total_duration / time_step)
         time_steps = np.arange(interval_count) * time_step 
         timestamps = (start_time_of_day + time_steps) % seconds_in_an_hour 

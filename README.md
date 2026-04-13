@@ -67,6 +67,11 @@ sudo apt install python3-venv graphviz graphviz-dev ifupdown vsftpd wireshark
 
 These packages include tools for Python environments, graph visualization, network interfaces, file transfer, and packet inspection.
 
+If not installed already we need a matplotlib supported GUI backend:
+```bash
+sudo apt-get install python3-tk
+```
+
 ---
 
 ## 3. Python Virtual Environment
@@ -83,7 +88,7 @@ Once the virtual environment is activated, update `pip` and install all required
 
 ```bash
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements.txt --default-timeout=240 --retries 10 --no-cache-dir
 ```
 
 This ensures that all Python dependencies are properly installed and up to date.
