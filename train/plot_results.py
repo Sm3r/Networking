@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 from data_loader import NetworkDataset
 from network import LSTM
+from constants import BIN_SIZE
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -50,8 +51,8 @@ def plot_test_results():
     plt.plot(real_predictions, label='Predicted Traffic (Bytes)', color='red', alpha=0.9, linestyle='--', linewidth=1.5)
     
     plt.title('Network Byte Load: Actual vs. Predicted', fontsize=16)
-    plt.xlabel('Time (2-second bins)', fontsize=12)
-    plt.ylabel('Total Bytes', fontsize=12)
+    plt.xlabel("Virtual Simulation Timestamp")
+    plt.ylabel(f"Bytes per {BIN_SIZE} Timestamps Bin")
     
     plt.legend(loc='upper right', fontsize=12)
     plt.grid(True, linestyle=':', alpha=0.7)

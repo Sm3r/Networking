@@ -20,7 +20,7 @@ def prepare_network_data(data_dir, force_rebuild=False):
     if not force_rebuild and train_file.exists() and test_file.exists() and scaler_file.exists():
         return
 
-    datasets = sorted(glob.glob(str(path / "dataset*.csv")))
+    datasets = sorted(glob.glob(str(path / "*.csv")))
 
     ### Merge datasets with offsetting virtual_timestamp to ensure continuity
     df_list = []
