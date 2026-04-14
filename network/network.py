@@ -2,9 +2,11 @@
 import os
 import sys
 import time
+import threading
 from typing import Tuple
-
 import numpy as np
+import multiprocessing as mp
+
 from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.net import Mininet
@@ -15,6 +17,13 @@ from capture.packetsniffer import PacketSniffer
 from logger import setup_logger
 from simulation.simulation import Simulation
 from topology import CustomTopology
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from train.realtime_predict import LivePredictor, realtime_plot_worker
 
 logger = setup_logger()
 
@@ -109,15 +118,73 @@ def start_simulation(net: Mininet):
         return
 
     time.sleep(5)
-    sim.start()
+    sim_thread = threading.Thread(target=sim.start, name='simulation-main')
+    sim_thread.start()
 
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
     time.sleep(5)
+    sim_thread.join()
     sim.wait_for_completion(timeout=None)   # wait as long as needed
     time.sleep(5)
     capture.stop_capture()
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 
+def start_simulation_live_prediction(net: Mininet):
+
+    HOURS = 1
+    AVG_PACKETS_PER_MINUTE = 720
+    total_duration  = HOURS * 60 * 60
+    total_requests  = (AVG_PACKETS_PER_MINUTE / 60) * total_duration
+
+    sim = Simulation(
+        net=net,
+        traffic_distribution_csv_path='resources/traffic_signal.csv',
+        website_list_path='resources/website-list.json',
+        file_list_path='resources/file-list.json',
+        start_time_of_day=np.random.randint(0, 86400),
+        total_requests_count=total_requests,
+        total_duration=total_duration,
+        is_real_time=True,
+        time_step=1
+    )
+    capture = PacketSniffer(simulation=sim, interface='any')
+    predictor = LivePredictor(sniffer=capture, simulation=sim)
+
+    # Starting network capture and simulation
+    try:
+        capture.start_capture(output_filename='simple')
+    except Exception as e:
+        return
+
+    time.sleep(5)
+
+    # 1. Start the separate Plotting Process
+    plot_queue = mp.Queue()
+    plot_process = mp.Process(target=realtime_plot_worker, args=(plot_queue,))
+    plot_process.start()
+
+    # 2. Start the Predictor Thread, passing it the queue
+    predictor = LivePredictor(sniffer=capture, simulation=sim, plot_queue=plot_queue)
+    predictor.start()
+    
+    # Start simulation
+    sim.start()
+
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
+    time.sleep(5)
+    sim.wait_for_completion(timeout=None)
+    time.sleep(5)
+    
+    # 3. Clean Shutdown
+    predictor.stop()
+    capture.stop_capture()
+    
+    # Send the kill signal to the plot window and wait for it to close
+    plot_queue.put((None, None, None))
+    plot_process.join(timeout=5)
+    
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
+    
 # Destroy Mininet network
 def teardown(net: Mininet):
 
@@ -142,7 +209,7 @@ def run(dot_file_path: str):
     time.sleep(2)
     
     logger.info(f'Network started!\n')
-    start_simulation(net)
+    start_simulation_live_prediction(net)
 
     # CLI(net) 
 

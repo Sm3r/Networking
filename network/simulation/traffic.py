@@ -165,6 +165,7 @@ class TrafficGenerator:
         ax.set_title(plotname)
         fig.tight_layout()
         fig.savefig(filename, dpi=150)
+        plt.close(fig)
 
     def generate(self, total_duration: float, total_requests_count: int,
                  traffic_distribution_csv_path: str, start_time_of_day: float,
@@ -200,7 +201,7 @@ class TrafficGenerator:
         
 
         # Sample and interpolate traffic data
-        seconds_in_an_hour = 60 * 60;
+        seconds_in_an_hour = 60 * 60
         interval_count = int(total_duration / time_step)
         time_steps = np.arange(interval_count) * time_step 
         timestamps = (start_time_of_day + time_steps) % seconds_in_an_hour 
