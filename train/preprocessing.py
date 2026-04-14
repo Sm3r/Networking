@@ -5,6 +5,11 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 
+try:
+    from train.constants import BIN_SIZE
+except ImportError:
+    from constants import BIN_SIZE
+
 def prepare_network_data(data_dir, force_rebuild=False):
     path = Path(data_dir)
     
@@ -37,8 +42,7 @@ def prepare_network_data(data_dir, force_rebuild=False):
     traffic_data = traffic_data[[c for c in COLUMNS if c in traffic_data.columns]]
 
     ### Binning
-    bin_size = 2
-    bins = np.arange(traffic_data['virtual_timestamp'].min(), traffic_data['virtual_timestamp'].max() + bin_size, bin_size)
+    bins = np.arange(traffic_data['virtual_timestamp'].min(), traffic_data['virtual_timestamp'].max() + BIN_SIZE, BIN_SIZE)
 
     traffic_data['bin'] = pd.cut(
         traffic_data['virtual_timestamp'], 
@@ -50,7 +54,7 @@ def prepare_network_data(data_dir, force_rebuild=False):
     binned_data = traffic_data.groupby('bin', observed=False)['length'].sum().fillna(0).reset_index()
 
     ### Thresholding
-    threshold = 8000
+    threshold = 18000
     binned_data['length'] = binned_data['length'].clip(upper=threshold)
 
     ### Splitting

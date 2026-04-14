@@ -165,6 +165,7 @@ class TrafficGenerator:
         ax.set_title(plotname)
         fig.tight_layout()
         fig.savefig(filename, dpi=150)
+        plt.close(fig)
 
     def generate(self, total_duration: float, total_requests_count: int,
                  traffic_distribution_csv_path: str, start_time_of_day: float,

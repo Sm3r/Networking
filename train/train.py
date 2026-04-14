@@ -2,9 +2,14 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from preprocessing import prepare_network_data
-from data_loader import NetworkDataset
-from network import LSTM
+try:
+    from train.preprocessing import prepare_network_data
+    from train.data_loader import NetworkDataset
+    from train.network import LSTM
+except ImportError:
+    from preprocessing import prepare_network_data
+    from data_loader import NetworkDataset
+    from network import LSTM
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -41,7 +46,7 @@ def evaluate(model, dataloader, criterion):
 def main():
     ### Hyperparameters
     BATCH_SIZE = 64
-    NUM_EPOCHS = 50
+    NUM_EPOCHS = 100
     LEARNING_RATE = 1e-3
 
     prepare_network_data(data_dir=DATA_DIR, force_rebuild=False)
