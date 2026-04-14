@@ -91,50 +91,11 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
     return net, nat
 
 # Configure and start the simulation
-def start_simulation(net: Mininet):
-
+def _setup_simulation_common(net: Mininet):
     HOURS = 1
     AVG_PACKETS_PER_MINUTE = 720
-    total_duration  = HOURS * 60 * 60
-    total_requests  = (AVG_PACKETS_PER_MINUTE / 60) * total_duration
-
-    sim = Simulation(
-        net=net,
-        traffic_distribution_csv_path='resources/traffic_signal.csv',
-        website_list_path='resources/website-list.json',
-        file_list_path='resources/file-list.json',
-        start_time_of_day=np.random.randint(0, 86400),
-        total_requests_count=total_requests,
-        total_duration=total_duration,
-        is_real_time=True,   # advance virtual time as fast as the network allows
-        time_step=1
-    )
-    capture = PacketSniffer(simulation=sim, interface='any')
-
-    # Starting network capture and simulation
-    try:
-        capture.start_capture(output_filename='simple')
-    except Exception as e:
-        return
-
-    time.sleep(5)
-    sim_thread = threading.Thread(target=sim.start, name='simulation-main')
-    sim_thread.start()
-
-    logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
-    time.sleep(5)
-    sim_thread.join()
-    sim.wait_for_completion(timeout=None)   # wait as long as needed
-    time.sleep(5)
-    capture.stop_capture()
-    logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
-
-def start_simulation_live_prediction(net: Mininet):
-
-    HOURS = 1
-    AVG_PACKETS_PER_MINUTE = 720
-    total_duration  = HOURS * 60 * 60
-    total_requests  = (AVG_PACKETS_PER_MINUTE / 60) * total_duration
+    total_duration = HOURS * 60 * 60
+    total_requests = (AVG_PACKETS_PER_MINUTE / 60) * total_duration
 
     sim = Simulation(
         net=net,
@@ -148,14 +109,39 @@ def start_simulation_live_prediction(net: Mininet):
         time_step=1
     )
     capture = PacketSniffer(simulation=sim, interface='any')
-    predictor = LivePredictor(sniffer=capture, simulation=sim)
-
-    # Starting network capture and simulation
+    
     try:
         capture.start_capture(output_filename='simple')
     except Exception as e:
+        return None, None
+    
+    return sim, capture
+
+
+def start_simulation(net: Mininet):
+    sim, capture = _setup_simulation_common(net)
+    if sim is None:
         return
 
+    time.sleep(5)
+    sim_thread = threading.Thread(target=sim.start, name='simulation-main')
+    sim_thread.start()
+
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Wait for simulation thread to fully terminate...\n")
+    time.sleep(5)
+    sim_thread.join()
+    sim.wait_for_completion(timeout=None)
+    time.sleep(5)
+    capture.stop_capture()
+    logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
+
+def start_simulation_live_prediction(net: Mininet):
+    sim, capture = _setup_simulation_common(net)
+    if sim is None:
+        return
+
+    predictor = LivePredictor(sniffer=capture, simulation=sim)
+    
     time.sleep(5)
 
     # 1. Start the separate Plotting Process
@@ -199,7 +185,7 @@ def teardown(net: Mininet):
     net.stop()
 
 # Start the Mininet network and the traffic generation
-def run(dot_file_path: str):
+def run(dot_file_path: str, live_pred: bool = False):
 
     net, nat = setup(dot_file_path)
 
@@ -209,7 +195,11 @@ def run(dot_file_path: str):
     time.sleep(2)
     
     logger.info(f'Network started!\n')
-    start_simulation_live_prediction(net)
+    
+    if live_pred:
+        start_simulation_live_prediction(net)
+    else:
+        start_simulation(net)
 
     # CLI(net) 
 
@@ -217,8 +207,8 @@ def run(dot_file_path: str):
 
 if __name__ == '__main__':
     # Check for the topology file argument
-    if len(sys.argv) != 2:
-        print(f"Usage: sudo python3 {sys.argv[0]} [topology.dot]")
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print(f"Usage: sudo python3 {sys.argv[0]} [topology.dot] [--live]")
         sys.exit(1)
 
     # Ensure the topology file exists
@@ -227,5 +217,14 @@ if __name__ == '__main__':
         print(f"Error: Topology file not found at '{topology_file}'")
         sys.exit(1)
     
+    # Check for optional live prediction parameter
+    live_pred = False
+    if len(sys.argv) == 3:
+        if sys.argv[2] == '--live':
+            live_pred = True
+        else:
+            print(f"Error: Unknown parameter '{sys.argv[2]}'. Use '--live' or omit for default simulation.")
+            sys.exit(1)
+    
     # log.setLogLevel('info')
-    run(topology_file)
+    run(topology_file, live_pred)

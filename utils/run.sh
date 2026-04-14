@@ -1,5 +1,5 @@
-if [ "$#" -ne 1 ]; then
-    printf "Usage: $0 [topology.dot]\n"
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    printf "Usage: $0 [topology.dot] [--live]\n"
     exit 0
 fi
 
@@ -8,6 +8,17 @@ clear
 net_folder=network
 ryu_log=ryu-output.log
 dotfile=$1
+live_prediction_flag=""
+
+# Check for optional --live parameter
+if [ "$#" -eq 2 ]; then
+    if [ "$2" = "--live" ]; then
+        live_prediction_flag="--live"
+    else
+        printf "Error: Unknown parameter '$2'. Use '--live' or omit for default simulation.\n"
+        exit 1
+    fi
+fi
 
 PURPLE="\033[1;35m"
 RESET="\033[0m"
@@ -54,7 +65,7 @@ fi
 sudo mn -c > /dev/null 2>&1
 
 # Create network
-sudo -E ./venv/bin/python $net_folder/network.py "$dotfile"
+sudo -E ./venv/bin/python $net_folder/network.py "$dotfile" $live_prediction_flag
 
 printf "${PURPLE} *** [SHELL   ]:${RESET} Clearing everything...\n"
 
