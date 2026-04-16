@@ -34,12 +34,23 @@
 
         <div class="mb-6 p-6 bg-gray-800 rounded-lg shadow-md">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Y-Axis Controls -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Packet Count (Min, Max)</label>
-                    <div class="flex space-x-2">
-                        <input id="yMin" type="number" value="0" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 px-3 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Min">
-                        <input id="yMax" type="number" value="100" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 px-3 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Max">
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- Y-Axis Controls -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Packet Count (Min, Max)</label>
+                        <div class="flex space-x-2">
+                            <input id="yMin" type="number" value="0" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 px-3 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Min">
+                            <input id="yMax" type="number" value="100" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 px-3 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Max">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Number of points</label>
+                        <div class="flex space-x-2">
+                            <input id="pointCount" type="number" value="2" class="block w-full rounded-md border-gray-600 bg-gray-700 py-2 px-3 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Points">
+                            <button id="btnGeneratePoints" type="button" class="w-full rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500">
+                                Generate Points
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <!-- X-Axis Controls -->
@@ -102,6 +113,8 @@
             const inDurationUOM = document.getElementById('xUOM');
             const inInterval = document.getElementById('interval');
             const inIntervalUOM = document.getElementById('intervalUOM');
+            const inPointCount = document.getElementById('pointCount');
+            const btnGenerate = document.getElementById('btnGeneratePoints');
             const btnReset = document.getElementById('btnReset');
             const btnExport = document.getElementById('btnExport');
 
@@ -267,7 +280,7 @@
                                 grid: { color: '#374151' },
                                 ticks: {
                                     color: '#d1d5db',
-                                    stepSize: timeToSeconds(parseInt(inDuration.value) || 1, inDurationUOM.value) * 0.1,
+                                    stepSize: (parseInt(inDuration.value) || 1) * 0.1,
                                     callback: function(value) {
                                         const uom = inDurationUOM.value;
                                         const time = secondsToTime(value.toString(), uom);
@@ -275,7 +288,7 @@
                                     }
                                 },
                                 min: 0,
-                                max: parseInt(inDuration.value)
+                                max: timeToSeconds(parseInt(inDuration.value) || 1, inDurationUOM.value)
                             }
                         },
                         plugins: {
@@ -394,6 +407,33 @@
                 return a + (b * nt) + (c * t2) + (d * t3);
             }
 
+            function generateRandomPoints() {
+                const pointCount = Math.max(2, parseInt(inPointCount.value));
+                controlPoints = new Array(pointCount);
+
+                const yMin = parseInt(inMinPacketCount.value);
+                const yMax = parseInt(inMaxPacketCount.value);
+                const yRescale = (v, s, off) => { return v * s + off; };
+
+                const offset = yMin;
+                const scale = yMax - yMin;
+                const period = timeToSeconds(parseInt(inDuration.value) || 1, inDurationUOM.value);
+                const dt = 1 / (pointCount - 1);
+
+                // Set first and last points
+                let y = yRescale(0.2, scale, offset); // Math.random();
+                controlPoints[0] = { x: 0, y: y };
+                controlPoints[pointCount - 1] = { x: period, y: y };
+
+                // const yMaxRange = dt * 2; // Maxmimum 60° of angle
+                const yMaxRange = dt * 5;
+                for (let i = 1; i < pointCount - 1; ++i) {
+                    const x = i * dt * period;
+                    y = yRescale((Math.random() * 2 - 1) * yMaxRange, scale, y);
+                    y = Math.min(Math.max(y, yMin), yMax);
+                    controlPoints[i] = { x: x, y: y };
+                }
+            }
 
             /**
              * Exports the interpolated signal to a CSV file.
@@ -443,6 +483,11 @@
             inDurationUOM.addEventListener('change', updateXAxis);
             inMinPacketCount.addEventListener('change', updateYAxis);
             inMaxPacketCount.addEventListener('change', updateYAxis);
+            btnGenerate.addEventListener('click', () => {
+                generateRandomPoints();
+                chartInstance.data.datasets[0].data = controlPoints;
+                chartInstance.update('none');
+            });
             btnReset.addEventListener('click', () => {
                 resetControlPoints();
                 chartInstance.data.datasets[0].data = controlPoints;
