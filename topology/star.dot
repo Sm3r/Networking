@@ -1,4 +1,4 @@
-graph simple {
+graph star {
     h2 [type="server"]
     h5 [type="server"]
     h6 [type="server"]

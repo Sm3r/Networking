@@ -1,0 +1,18 @@
+graph complex {
+    h2 [type="server"];
+    h4 [type="server"];
+    h6 [type="server"];
+
+    s1 -- s2 [latency="5"];
+    s2 -- s3 [latency="3"];
+    s3 -- s1;
+
+    s1 -- h1 [latency="4"];
+    s1 -- h2;
+
+    s2 -- h3;
+    s2 -- h4 [latency="2"];
+
+    s3 -- h5;
+    s3 -- h6 [latency="1"];
+}
