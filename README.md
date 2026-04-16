@@ -50,7 +50,7 @@ Networking/
 ```
 
 # Project Setup Guide
-This guide will help you set up your environment and run the project step by step. 
+This guide will help you set up your environment and run the project step by step.
 
 ## 1. ComNetsEmu
 
@@ -63,12 +63,12 @@ Once it is running, clone this repository **inside the virtual machine** and **m
 
 **Make sure you have Mininet installed**
 
-Before running the project, make sure the required system packages are installed.  
+Before running the project, make sure the required system packages are installed.
 You can do so by running:
 
 ```bash
 sudo apt install graphviz graphviz-dev mininet ifupdown vsftpd libxml2-dev libxslt1-dev
-sudo apt install build-essential python3-dev libffi-dev libssl-dev zlib1g-dev libjpeg-dev libpng-dev pkg-config
+sudo apt install build-essential python3-dev python3-venv libffi-dev libssl-dev zlib1g-dev libjpeg-dev libpng-dev pkg-config
 ```
 These packages include tools for Python environments, graph visualization, network interfaces, file transfer, and packet inspection.
 
@@ -89,7 +89,7 @@ sudo apt upgrade
 ```
 ## 3. Python Virtual Environment
 
-It is recommended to create a virtual environment to keep your Python dependencies isolated from the system.  
+It is recommended to create a virtual environment to keep your Python dependencies isolated from the system.
 inside the project folder create the enviroment, activate it and install all Python packages needed:
 
 ```bash
@@ -101,7 +101,7 @@ pip install -r requirements.txt --default-timeout=240 --retries 10 --no-cache-di
 
 ## 4. Running the simulation
 
-Make sure you are inside the **`Networking`** folder.  
+Make sure you are inside the **`Networking`** folder.
 
 Start simulation using the provided script:
 
