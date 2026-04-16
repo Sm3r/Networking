@@ -201,11 +201,11 @@ class TrafficGenerator:
         
 
         # Sample and interpolate traffic data
-        seconds_in_an_hour = 60 * 60
+        distribution_period = max(timestamp)
         interval_count = int(total_duration / time_step)
         time_steps = np.arange(interval_count) * time_step 
-        timestamps = (start_time_of_day + time_steps) % seconds_in_an_hour 
-        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=seconds_in_an_hour)
+        timestamps = (start_time_of_day + time_steps) % distribution_period 
+        sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=distribution_period)
 
         self.plot_distribution(timestamps, sampled_packet_count, "plots/samples.png", "Sampled distribution")
  
