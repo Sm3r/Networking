@@ -421,6 +421,5 @@ STM32Make.make
 /data/*.csv
 *.png
 *.npy
-*.joblib
 
 ## ---------------- END MANUALLY ADDED ---------------- ##

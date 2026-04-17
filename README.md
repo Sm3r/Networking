@@ -118,6 +118,7 @@ To run the simultaion with the live network traffic prediction toggled on add th
 ```bash
 ./utils/run.sh topology/simple.dot --live
 ```
+Note that the model and the scaler are set with a BIN_SIZE = 5, changing it will require retraining the model and preprocessing the data, wich can be easily done as explained beneath.
 
 ## 5. Running the LSTM model
 

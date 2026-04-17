@@ -9,7 +9,7 @@ from pathlib import Path
 import logging
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
+from matplotlib.ticker import MultipleLocator, AutoMinorLocator
 
 try:
     from train.network import LSTM
@@ -32,8 +32,9 @@ def realtime_plot_worker(plot_queue):
     ax.set_xlabel("Virtual Simulation Timestamp")
     ax.set_ylabel(f"Bytes per {BIN_SIZE} Timestamps Bin")
     ax.legend(loc='upper left')
-    ax.xaxis.set_major_locator(MultipleLocator(BIN_SIZE))
-    ax.grid(True, linestyle=':', alpha=0.7)
+    ax.xaxis.set_major_locator(MultipleLocator(BIN_SIZE * 2))
+    ax.xaxis.set_minor_locator(MultipleLocator(BIN_SIZE))
+    ax.grid(True, which='both', linestyle=':', alpha=0.7)
     fig.tight_layout()
     plt.show(block=False)
 
@@ -123,7 +124,7 @@ class LivePredictor(threading.Thread):
                             real_prediction = self.scaler.inverse_transform(scaled_prediction.numpy())[0][0]
                             
                             formatted_time = self.simulation._format_time_pretty(current_bin)
-                            logger.info(f"[{formatted_time}] Past 2 timesteps: {current_bin_sum} B | Predicted NEXT 2 timesteps: {real_prediction:.0f} B\n")
+                            logger.info(f"{formatted_time} Past 2 timesteps: {current_bin_sum} B | Predicted NEXT 2 timesteps: {real_prediction:.0f} B\n")
                             
                             # Plot actual value for the current bin
                             if self.plot_queue is not None:
