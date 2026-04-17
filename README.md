@@ -15,6 +15,7 @@ Networking/
 ├── requirements.txt
 ├── model_LSTM.pth
 ├── data/
+│   └── scaler.joblib
 ├── network/
 │   ├── controller.py
 │   ├── logger.py
