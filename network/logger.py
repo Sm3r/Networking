@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class LoggerColors:
-    
+
     # Styles
     RESET: str = field(default='\033[0m')
     BOLD: str = field(default='\033[1m')
@@ -48,7 +48,7 @@ class CustomFormatter(logging.Formatter):
 def setup_logger():
 
     logger = logging.getLogger('networking')
-    
+
     # Custom format headers
     log_headers = {
         logging.DEBUG:   f"{LoggerColors.BOLD} *** [DEBUG   ]:{LoggerColors.RESET} %(msg)s",
@@ -70,5 +70,5 @@ def setup_logger():
     # Add custom handler
     if not logger.handlers:
         logger.addHandler(handler)
-    
+
     return logger

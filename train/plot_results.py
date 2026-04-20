@@ -28,12 +28,12 @@ def plot_test_results():
     all_actuals = []
 
     print("Running predictions on the test set...")
-    
+
     ### Predict on test set
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
             predictions = model(batch_x)
-            
+
             all_predictions.extend(predictions.numpy())
             all_actuals.extend(batch_y.numpy())
 
@@ -49,17 +49,17 @@ def plot_test_results():
 
     plt.plot(real_actuals, label='Actual Traffic (Bytes)', color='blue', alpha=0.6, linewidth=2)
     plt.plot(real_predictions, label='Predicted Traffic (Bytes)', color='red', alpha=0.9, linestyle='--', linewidth=1.5)
-    
+
     plt.title('Network Byte Load: Actual vs. Predicted', fontsize=16)
     plt.xlabel("Virtual Simulation Timestamp")
     plt.ylabel(f"Bytes per {BIN_SIZE} Timestamps Bin")
-    
+
     plt.legend(loc='upper right', fontsize=12)
     plt.grid(True, linestyle=':', alpha=0.7)
-    
+
     ### Zoom
-    #plt.xlim(0, 500) 
-    
+    #plt.xlim(0, 500)
+
     plt.tight_layout()
     plt.show()
 

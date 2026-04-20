@@ -12,11 +12,11 @@ except ImportError:
 
 def prepare_network_data(data_dir, force_rebuild=False):
     path = Path(data_dir)
-    
+
     train_file = path / "train.npy"
     test_file = path / "test.npy"
     scaler_file = path / "scaler.joblib"
-    
+
     if not force_rebuild and train_file.exists() and test_file.exists() and scaler_file.exists():
         return
 
@@ -45,9 +45,9 @@ def prepare_network_data(data_dir, force_rebuild=False):
     bins = np.arange(traffic_data['virtual_timestamp'].min(), traffic_data['virtual_timestamp'].max() + BIN_SIZE, BIN_SIZE)
 
     traffic_data['bin'] = pd.cut(
-        traffic_data['virtual_timestamp'], 
-        bins=bins, 
-        labels=bins[:-1], 
+        traffic_data['virtual_timestamp'],
+        bins=bins,
+        labels=bins[:-1],
         right=False,
         include_lowest=True
     )

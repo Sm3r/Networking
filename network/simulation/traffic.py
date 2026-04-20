@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 import numpy as np
@@ -113,7 +114,7 @@ class TrafficGenerator:
                 command=self._build_ftp_command(net.get(server).IP(), f"file_from_{server}.txt")
             )
         return task
-    
+
     def _generate_remote(self, net: Mininet, simulation_t: float, timestamp: float):
         """
         Generate random remote traffic
@@ -145,7 +146,7 @@ class TrafficGenerator:
             file = np.random.choice(self.remote_files['ftp_files'])
             base_url = file['base_url']
             filepath = file['file_path']
-            
+
             task = PlaybookEntry(
                 time_of_day=timestamp,
                 start_time=simulation_t,
@@ -198,34 +199,34 @@ class TrafficGenerator:
         except Exception as e:
             logger.error(f"Error while reading {traffic_distribution_csv_path}: {e}\n")
             return playbook
-        
+
 
         # Sample and interpolate traffic data
         distribution_period = max(timestamp)
         interval_count = int(total_duration / time_step)
-        time_steps = np.arange(interval_count) * time_step 
-        timestamps = (start_time_of_day + time_steps) % distribution_period 
+        time_steps = np.arange(interval_count) * time_step
+        timestamps = (start_time_of_day + time_steps) % distribution_period
         sampled_packet_count = np.interp(timestamps, timestamp, packet_count, period=distribution_period)
 
         self.plot_distribution(timestamps, sampled_packet_count, "plots/samples.png", "Sampled distribution")
- 
+
         # Add noise
         noise_range = (max(sampled_packet_count) - min(sampled_packet_count)) * 0.04
         noise_packet_count = sampled_packet_count + np.random.uniform(-noise_range, noise_range, len(sampled_packet_count))
         noise_packet_count = noise_packet_count.clip(min=0)
 
         self.plot_distribution(timestamps, noise_packet_count, "plots/noise_samples.png", "Sampled distribution + noise (sum != 1)")
-         
-        # Rescale to fit total packet count 
+
+        # Rescale to fit total packet count
         rescaled_packet_count = noise_packet_count - np.min(noise_packet_count)
         rescaled_packet_count /= np.sum(rescaled_packet_count)
 
         self.plot_distribution(timestamps, rescaled_packet_count, "plots/rescaled_samples.png", "Rescaled distribution (sum == 1)")
 
-        # Distribute packets based on probability distribution 
+        # Distribute packets based on probability distribution
         expected_packet_count = np.round(total_requests_count * rescaled_packet_count).astype(int)
         diff_packet_count = int(np.floor(total_requests_count - np.sum(expected_packet_count)))
-        
+
         self.plot_distribution(timestamps, expected_packet_count, "plots/expected_samples.png", "Scheduled packet count")
 
         # Correct packet count error
@@ -241,7 +242,7 @@ class TrafficGenerator:
 
         for i in range(interval_count):
             request_count = expected_packet_count[i]
-        
+
             if request_count > 0:
                 simulation_timestamp = time_steps[i]
                 t = timestamps[i]
@@ -254,10 +255,11 @@ class TrafficGenerator:
         playbook.sort(key=lambda item: item.start_time)
 
         logger.info(f"Scheduled tasks: {len(playbook)}\n")
-        if logger.level >= logging.DEBUG:
-            scheduled_filename = "scheduled-task.log"
+        if logger.level == logging.DEBUG:
+            log_filename = os.getpid() + "-scheduled-task.log"
+            scheduled_filename = os.path.join("debug", log_filename)
             logger.debug(f"Logging scheduled task to {scheduled_filename}\n")
-            
+
             scheduled_log = open(scheduled_filename, "w")
             scheduled_log.write("start_time,time_of_day,name\n");
             for task in playbook:

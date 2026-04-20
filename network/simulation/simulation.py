@@ -1,3 +1,4 @@
+import os
 import time
 import sched
 import logging
@@ -30,7 +31,7 @@ class Simulation():
         super().__init__()
         traffic = TrafficGenerator(net, website_list_path, file_list_path)
         self.playbook: List[PlaybookEntry] = traffic.generate(total_duration, total_requests_count, traffic_distribution_csv_path, start_time_of_day, time_step)
-        
+
         self.is_real_time = is_real_time
         self._lock = threading.Lock()
         self.simulation_start_time = 0
@@ -49,7 +50,7 @@ class Simulation():
 
     # Formats monotonic time into a 'MM:SS.ss' string
     def _format_time(self, t: float) -> str:
-        
+
         minutes, seconds = divmod(t, 60)
         return f"{int(minutes):02d}:{seconds:05.2f}"
 
@@ -141,8 +142,9 @@ class Simulation():
 
         logger.info(f"{self._format_time_pretty(0)} Starting simulation...\n")
 
-        due_task_filename = "due-task.log"
-        self._due_task_log = open(due_task_filename, "w")
+        due_task_filename = os.getpid() + "-due-task.log"
+        due_task_path = os.path.join("debug", due_task_filename)
+        self._due_task_log = open(due_task_path, "w")
         self._due_task_log.write("simulation_time,start_time,time_of_day,name\n")
 
         for task in self.playbook:

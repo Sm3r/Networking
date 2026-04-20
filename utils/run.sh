@@ -7,7 +7,7 @@ clear
 
 net_folder=network
 utils_folder=utils
-ryu_log=ryu-output.log
+ryu_log=debug/$$-ryu-output.log
 dotfile=$1
 live_prediction_flag=""
 distribution_file=""

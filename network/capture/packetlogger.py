@@ -57,7 +57,7 @@ class PacketLogger(threading.Thread):
         Attributes:
             filename(str): the path to the output csv file
         """
-        self.output_file = filename
+        self.output_file = os.path.join('captures', filename)
 
         # Create csv output file
         try:
@@ -68,9 +68,9 @@ class PacketLogger(threading.Thread):
         except IOError as e:
             logger.error(f"Error while opening {self.output_file}: {e}\n")
             return
-        
+
         self.start()
- 
+
     def stop_log(self):
         """
         Stop the packet logger

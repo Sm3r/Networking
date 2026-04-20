@@ -7,7 +7,7 @@ from typing import Any
 logger = logging.getLogger('networking')
 
 class CustomTopology(Topo):
-    
+
     # Parse the dot file and create the network topology
     def __init__(self, path: str, **opts: Any):
 
@@ -32,7 +32,7 @@ class CustomTopology(Topo):
                 # Append host marked as servers
                 if attrs.get('type') == 'server':
                     self.servers.append(node)
-        
+
         # Add edges
         for u, v, attrs in graph.edges(data=True):
             self.addLink(u, v)

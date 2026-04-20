@@ -15,8 +15,8 @@ class LSTM(nn.Module):
     def forward(self, x):
 
         lstm_out, (hn, cn) = self.lstm(x)
-        last_time_step_out = lstm_out[:, -1, :] 
-        
+        last_time_step_out = lstm_out[:, -1, :]
+
         output = self.dropout(last_time_step_out)
         predictions = self.linear(output)
         return predictions

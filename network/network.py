@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -49,7 +48,7 @@ def setup_ftp_servers(net: Mininet):
     logger.debug('  ┗  ', extra={'no_header': True})
     for server_name in net.topo.servers:
         server_host = net.get(server_name)
-        
+
         # Create a unique file for this server
         file_to_download = f'file_from_{server_name}.txt'
         server_host.cmd(f'echo "Data from {server_name}" > /srv/ftp/{file_to_download}')
@@ -57,7 +56,7 @@ def setup_ftp_servers(net: Mininet):
 
         # Configure vsftpd to enable anonymous donwloads
         server_host.cmd(f'sudo sed -i "s/^#* *anonymous_enable=NO/anonymous_enable=YES/" /etc/vsftpd.conf')
-        
+
         # Start FTP server
         server_host.cmd('/usr/sbin/vsftpd &')
 
@@ -72,7 +71,7 @@ def setup_ftp_servers(net: Mininet):
 
 # Generate and configure a Mininet network describing the topology from a Graphviz dot file
 def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
-    
+
     topo = CustomTopology(dot_file_path)
     controller = RemoteController('ryuController', ip='127.0.0.1', port=6653)
 
@@ -91,10 +90,10 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
     return net, nat
 
 # Configure and start the simulation
-def _setup_simulation_common(net: Mininet, traffic_distribution_path: str = None):
+def _setup_simulation_common(net: Mininet, traffic_distribution_path: str = None, capture_filename: str = "test"):
     if traffic_distribution_path is None:
         traffic_distribution_path = 'resources/distributions/traffic_signal.csv'
-    
+
     HOURS = 1
     AVG_PACKETS_PER_MINUTE = 720
     total_duration = HOURS * 60 * 60
@@ -112,17 +111,17 @@ def _setup_simulation_common(net: Mininet, traffic_distribution_path: str = None
         time_step=1
     )
     capture = PacketSniffer(simulation=sim, interface='any')
-    
+
     try:
-        capture.start_capture(output_filename='simple')
+        capture.start_capture(output_filename=capture_filename)
     except Exception as e:
         return None, None
-    
+
     return sim, capture
 
 
-def start_simulation(net: Mininet, traffic_distribution_path: str = None):
-    sim, capture = _setup_simulation_common(net, traffic_distribution_path)
+def start_simulation(net: Mininet, traffic_distribution_path: str = None, capture_filename: str = "test"):
+    sim, capture = _setup_simulation_common(net, traffic_distribution_path, capture_filename)
     if sim is None:
         return
 
@@ -138,13 +137,13 @@ def start_simulation(net: Mininet, traffic_distribution_path: str = None):
     capture.stop_capture()
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 
-def start_simulation_live_prediction(net: Mininet, traffic_distribution_path: str = None):
-    sim, capture = _setup_simulation_common(net, traffic_distribution_path)
+def start_simulation_live_prediction(net: Mininet, traffic_distribution_path: str = None, capture_filename: str = "test"):
+    sim, capture = _setup_simulation_common(net, traffic_distribution_path, capture_filename)
     if sim is None:
         return
 
     predictor = LivePredictor(sniffer=capture, simulation=sim)
-    
+
     time.sleep(5)
 
     # 1. Start the separate Plotting Process
@@ -155,7 +154,7 @@ def start_simulation_live_prediction(net: Mininet, traffic_distribution_path: st
     # 2. Start the Predictor Thread, passing it the queue
     predictor = LivePredictor(sniffer=capture, simulation=sim, plot_queue=plot_queue)
     predictor.start()
-    
+
     # Start simulation
     sim.start()
 
@@ -163,17 +162,17 @@ def start_simulation_live_prediction(net: Mininet, traffic_distribution_path: st
     time.sleep(5)
     sim.wait_for_completion(timeout=None)
     time.sleep(5)
-    
+
     # 3. Clean Shutdown
     predictor.stop()
     capture.stop_capture()
-    
+
     # Send the kill signal to the plot window and wait for it to close
     plot_queue.put((None, None, None))
     plot_process.join(timeout=5)
-    
+
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
-    
+
 # Destroy Mininet network
 def teardown(net: Mininet):
 
@@ -191,20 +190,21 @@ def teardown(net: Mininet):
 def run(dot_file_path: str, live_pred: bool = False, traffic_distribution_path: str = None):
 
     net, nat = setup(dot_file_path)
+    topology_name = os.path.splitext(os.path.basename(dot_file_path))[0];
 
     logger.info('Starting network...\n')
     net.start()
     net.topo.set_latency(net)
     time.sleep(2)
-    
-    logger.info(f'Network started!\n')
-    
-    if live_pred:
-        start_simulation_live_prediction(net, traffic_distribution_path)
-    else:
-        start_simulation(net, traffic_distribution_path)
 
-    # CLI(net) 
+    logger.info(f'Network started!\n')
+
+    if live_pred:
+        start_simulation_live_prediction(net, traffic_distribution_path, topology_name)
+    else:
+        start_simulation(net, traffic_distribution_path, topology_name)
+
+    # CLI(net)
 
     teardown(net)
 
@@ -219,11 +219,11 @@ if __name__ == '__main__':
     if not os.path.isfile(topology_file):
         print(f"Error: Topology file not found at '{topology_file}'")
         sys.exit(1)
-    
+
     # Check for optional parameters
     live_pred = False
     traffic_distribution_path = None
-    
+
     for i in range(2, len(sys.argv)):
         if sys.argv[i] == '--live':
             live_pred = True
@@ -232,6 +232,6 @@ if __name__ == '__main__':
         else:
             print(f"Error: Unknown parameter '{sys.argv[i]}'. Use '--live' or provide a CSV file path.")
             sys.exit(1)
-    
+
     # log.setLogLevel('info')
     run(topology_file, live_pred, traffic_distribution_path)

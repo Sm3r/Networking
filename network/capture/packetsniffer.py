@@ -25,7 +25,7 @@ class PacketSniffer(threading.Thread):
 
         # --- Publish/Subscribe Setup ---
         self._subscribers = []
-        
+
         # Register a dedicated queue for the internal CSV logger
         self._logger_queue = self.register_subscriber()
         self._logger = PacketLogger(self.get_logger_packets)
@@ -50,7 +50,7 @@ class PacketSniffer(threading.Thread):
         # Only process packets that have IP layer
         if 'IP' not in packet:
             return
-            
+
         # Get packet info
         t = self.simulation.get_time()
         time_of_day = self.simulation.get_time_of_day()
@@ -63,7 +63,7 @@ class PacketSniffer(threading.Thread):
         # Broadcast packet info to ALL registered queues
         for sub_queue in self._subscribers:
             sub_queue.put(wrapper)
-    
+
     def run(self):
         """
         Main thread function which runs the network capture and stores all the data that should be logged
