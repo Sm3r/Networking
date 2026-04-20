@@ -1,23 +1,48 @@
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    printf "Usage: $0 [topology.dot] [--live]\n"
+if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
+    printf "Usage: $0 [topology.dot] [--live] [distribution.csv]\n"
     exit 0
 fi
 
 clear
 
 net_folder=network
+utils_folder=utils
 ryu_log=ryu-output.log
 dotfile=$1
 live_prediction_flag=""
+distribution_file=""
 
-# Check for optional --live parameter
-if [ "$#" -eq 2 ]; then
-    if [ "$2" = "--live" ]; then
+# Check for optional parameters
+for arg in "${@:2}"; do
+    if [ "$arg" = "--live" ]; then
         live_prediction_flag="--live"
+    elif [[ "$arg" == *.csv ]]; then
+        # Check if the CSV file exists
+        if [ ! -f "$arg" ]; then
+            printf "Error: Distribution file not found: '$arg'\n"
+            printf "Available distributions in resources/distributions/:\n"
+            if [ -d "resources/distributions" ]; then
+                ls -1 resources/distributions/*.csv 2>/dev/null | sed 's/^/  /'
+            fi
+            exit 1
+        fi
+        distribution_file="$arg"
     else
-        printf "Error: Unknown parameter '$2'. Use '--live' or omit for default simulation.\n"
+        printf "Error: Unknown parameter '$arg'. Use '--live' or provide a CSV file path.\n"
         exit 1
     fi
+done
+
+# If no distribution file specified, generate one at runtime
+if [ -z "$distribution_file" ]; then
+    printf "${PURPLE} *** [SHELL   ]:${RESET} Generating traffic distribution...\n"
+    python3 $utils_folder/traffic_distribution_gen.py
+    if [ $? -ne 0 ]; then
+        printf "Error: Failed to generate traffic distribution\n"
+        exit 1
+    fi
+    distribution_file="resources/distributions/traffic_signal.csv"
+    printf "${PURPLE} *** [SHELL   ]:${RESET} Traffic distribution generated!\n"
 fi
 
 PURPLE="\033[1;35m"
@@ -64,8 +89,12 @@ fi
 # Ensure stale interfaces/bridges from previous runs are removed
 sudo mn -c > /dev/null 2>&1
 
-# Create network
-sudo -E ./venv/bin/python $net_folder/network.py "$dotfile" $live_prediction_flag
+# Create network with optional distribution file
+if [ -n "$distribution_file" ]; then
+    sudo -E ./venv/bin/python $net_folder/network.py "$dotfile" $live_prediction_flag "$distribution_file"
+else
+    sudo -E ./venv/bin/python $net_folder/network.py "$dotfile" $live_prediction_flag
+fi
 
 printf "${PURPLE} *** [SHELL   ]:${RESET} Clearing everything...\n"
 

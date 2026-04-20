@@ -421,5 +421,6 @@ STM32Make.make
 /data/*.csv
 *.png
 *.npy
+/resources/distributions/traffic_signal.csv
 
 ## ---------------- END MANUALLY ADDED ---------------- ##

@@ -91,7 +91,10 @@ def setup(dot_file_path: str) -> Tuple[Mininet, NAT]:
     return net, nat
 
 # Configure and start the simulation
-def _setup_simulation_common(net: Mininet):
+def _setup_simulation_common(net: Mininet, traffic_distribution_path: str = None):
+    if traffic_distribution_path is None:
+        traffic_distribution_path = 'resources/distributions/traffic_signal.csv'
+    
     HOURS = 1
     AVG_PACKETS_PER_MINUTE = 720
     total_duration = HOURS * 60 * 60
@@ -99,7 +102,7 @@ def _setup_simulation_common(net: Mininet):
 
     sim = Simulation(
         net=net,
-        traffic_distribution_csv_path='resources/distributions/traffic_signal.csv',
+        traffic_distribution_csv_path=traffic_distribution_path,
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
         start_time_of_day=np.random.randint(0, 86400),
@@ -118,8 +121,8 @@ def _setup_simulation_common(net: Mininet):
     return sim, capture
 
 
-def start_simulation(net: Mininet):
-    sim, capture = _setup_simulation_common(net)
+def start_simulation(net: Mininet, traffic_distribution_path: str = None):
+    sim, capture = _setup_simulation_common(net, traffic_distribution_path)
     if sim is None:
         return
 
@@ -135,8 +138,8 @@ def start_simulation(net: Mininet):
     capture.stop_capture()
     logger.info(f"{sim._format_time_pretty(sim.get_time())} Simulation terminated!\n")
 
-def start_simulation_live_prediction(net: Mininet):
-    sim, capture = _setup_simulation_common(net)
+def start_simulation_live_prediction(net: Mininet, traffic_distribution_path: str = None):
+    sim, capture = _setup_simulation_common(net, traffic_distribution_path)
     if sim is None:
         return
 
@@ -185,7 +188,7 @@ def teardown(net: Mininet):
     net.stop()
 
 # Start the Mininet network and the traffic generation
-def run(dot_file_path: str, live_pred: bool = False):
+def run(dot_file_path: str, live_pred: bool = False, traffic_distribution_path: str = None):
 
     net, nat = setup(dot_file_path)
 
@@ -197,9 +200,9 @@ def run(dot_file_path: str, live_pred: bool = False):
     logger.info(f'Network started!\n')
     
     if live_pred:
-        start_simulation_live_prediction(net)
+        start_simulation_live_prediction(net, traffic_distribution_path)
     else:
-        start_simulation(net)
+        start_simulation(net, traffic_distribution_path)
 
     # CLI(net) 
 
@@ -207,8 +210,8 @@ def run(dot_file_path: str, live_pred: bool = False):
 
 if __name__ == '__main__':
     # Check for the topology file argument
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print(f"Usage: sudo python3 {sys.argv[0]} [topology.dot] [--live]")
+    if len(sys.argv) < 2 or len(sys.argv) > 4:
+        print(f"Usage: sudo python3 {sys.argv[0]} [topology.dot] [--live] [distribution.csv]")
         sys.exit(1)
 
     # Ensure the topology file exists
@@ -217,14 +220,18 @@ if __name__ == '__main__':
         print(f"Error: Topology file not found at '{topology_file}'")
         sys.exit(1)
     
-    # Check for optional live prediction parameter
+    # Check for optional parameters
     live_pred = False
-    if len(sys.argv) == 3:
-        if sys.argv[2] == '--live':
+    traffic_distribution_path = None
+    
+    for i in range(2, len(sys.argv)):
+        if sys.argv[i] == '--live':
             live_pred = True
+        elif sys.argv[i].endswith('.csv'):
+            traffic_distribution_path = sys.argv[i]
         else:
-            print(f"Error: Unknown parameter '{sys.argv[2]}'. Use '--live' or omit for default simulation.")
+            print(f"Error: Unknown parameter '{sys.argv[i]}'. Use '--live' or provide a CSV file path.")
             sys.exit(1)
     
     # log.setLogLevel('info')
-    run(topology_file, live_pred)
+    run(topology_file, live_pred, traffic_distribution_path)

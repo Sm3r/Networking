@@ -47,6 +47,7 @@ Networking/
 └── utils/
     ├── plot.py
     ├── run.sh
+    ├── traffic_distribution_gen.py
     └── traffic-distribution-gen.html
 ```
 
@@ -104,6 +105,8 @@ pip install -r requirements.txt --default-timeout=240 --retries 10 --no-cache-di
 
 Make sure you are inside the **`Networking`** folder.
 
+*{Note that the model and the scaler are set with a BIN_SIZE = 5, changing it will require retraining the model and preprocessing the data, wich can be easily done as explained beneath.}*
+
 Start simulation using the provided script:
 
 ```bash
@@ -115,11 +118,20 @@ For example:
 ```bash
 ./utils/run.sh topology/simple.dot
 ```
+
+#### Live prediction:
 To run the simultaion with the live network traffic prediction toggled on add the `--live` parameter like so:
 ```bash
 ./utils/run.sh topology/simple.dot --live
 ```
-Note that the model and the scaler are set with a BIN_SIZE = 5, changing it will require retraining the model and preprocessing the data, wich can be easily done as explained beneath.
+
+
+#### Using specific distribution
+By default a new pseudo-randomly generated distribution is generated and used at each simulation.
+Optionally one of the distribution on wich the model was trained on can be used like so:
+```bash
+./utils/run.sh topology/star.dot --live resources/distributions/peek.csv
+```
 
 ## 5. Running the LSTM model
 

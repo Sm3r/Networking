@@ -101,7 +101,7 @@ class LivePredictor(threading.Thread):
         self.live_sequence = deque([0.0] * self.SEQ_LENGTH, maxlen=self.SEQ_LENGTH)
 
     def run(self):
-        logger.info("Live Predictor thread started.")
+        logger.info("Live Predictor thread started...\n")
         current_bin_sum = 0
         current_bin = None
 
@@ -146,6 +146,6 @@ class LivePredictor(threading.Thread):
                 self._stop_event.wait(0.01)
 
     def stop(self):
-        logger.info("Stopping Live Predictor thread...")
+        logger.info("Stopping Live Predictor thread...\n")
         self._stop_event.set()
         self.join(timeout=5)
