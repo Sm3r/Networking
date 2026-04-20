@@ -99,7 +99,7 @@ def _setup_simulation_common(net: Mininet):
 
     sim = Simulation(
         net=net,
-        traffic_distribution_csv_path='resources/traffic_signal.csv',
+        traffic_distribution_csv_path='resources/distributions/traffic_signal.csv',
         website_list_path='resources/website-list.json',
         file_list_path='resources/file-list.json',
         start_time_of_day=np.random.randint(0, 86400),

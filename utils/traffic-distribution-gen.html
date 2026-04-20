@@ -421,12 +421,12 @@
                 const dt = 1 / (pointCount - 1);
 
                 // Set first and last points
-                let y = yRescale(0.2, scale, offset); // Math.random();
+                let y = yRescale(0.3, scale, offset); // Math.random();
                 controlPoints[0] = { x: 0, y: y };
                 controlPoints[pointCount - 1] = { x: period, y: y };
 
                 // const yMaxRange = dt * 2; // Maxmimum 60° of angle
-                const yMaxRange = dt * 5;
+                const yMaxRange = dt * 6;
                 for (let i = 1; i < pointCount - 1; ++i) {
                     const x = i * dt * period;
                     y = yRescale((Math.random() * 2 - 1) * yMaxRange, scale, y);
