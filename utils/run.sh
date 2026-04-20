@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+if [ $(/usr/bin/id -u) -ne 0 ]; then
+    printf "Script must be run with sudo\n"
+    exit 1
+fi
+
 if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
     printf "Usage: $0 [topology.dot] [--live] [distribution.csv]\n"
     exit 0
