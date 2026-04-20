@@ -35,6 +35,7 @@ def plot_traffic():
     # Format x-axis as time of day (HH:MM:SS)
     ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%H:%M:%S'))
 
+    out_filename = filename.stem + ".png"
     out = Path(__file__).parent.parent / "plots" / filename.stem
     fig.tight_layout()
     fig.savefig(out, dpi=150)
