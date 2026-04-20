@@ -142,7 +142,7 @@ class Simulation():
 
         logger.info(f"{self._format_time_pretty(0)} Starting simulation...\n")
 
-        due_task_filename = os.getpid() + "-due-task.log"
+        due_task_filename = str(os.getpid()) + "-due-task.log"
         due_task_path = os.path.join("debug", due_task_filename)
         self._due_task_log = open(due_task_path, "w")
         self._due_task_log.write("simulation_time,start_time,time_of_day,name\n")

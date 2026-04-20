@@ -256,7 +256,7 @@ class TrafficGenerator:
 
         logger.info(f"Scheduled tasks: {len(playbook)}\n")
         if logger.level == logging.DEBUG:
-            log_filename = os.getpid() + "-scheduled-task.log"
+            log_filename = str(os.getpid()) + "-scheduled-task.log"
             scheduled_filename = os.path.join("debug", log_filename)
             logger.debug(f"Logging scheduled task to {scheduled_filename}\n")
 
