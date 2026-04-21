@@ -14,31 +14,19 @@ Networking/
 ├── README.md
 ├── requirements.txt
 ├── model_LSTM.pth
-├── captures/                    # Packet capture files from network simulations
-├── data/
-│   └── scaler.joblib
-├── debug/                       # Debug logs and diagnostic outputs
-├── network/
+├── network/                     # Core network simulation and SDN controller
 │   ├── controller.py
 │   ├── logger.py
 │   ├── network.py
 │   ├── topology.py
-│   ├── capture/
+│   ├── capture/                 # Packet capture utilities
 │   │   ├── packetlogger.py
 │   │   ├── packetsniffer.py
 │   │   └── packetwrapper.py
-│   └── simulation/
+│   └── simulation/              # Network simulation modules
 │       ├── simulation.py
 │       └── traffic.py
-├── plots/                       # Generated plot images and graphs
-├── resources/
-│   ├── distributions/
-│   ├── file-list.json
-│   └── website-list.json
-├── topology/
-│   ├── simple.dot
-│   └── star.dot
-├── train/
+├── train/                       # LSTM model training and prediction
 │   ├── constants.py
 │   ├── data_loader.py
 │   ├── network.py
@@ -46,11 +34,25 @@ Networking/
 │   ├── preprocessing.py
 │   ├── realtime_predict.py
 │   └── train.py
-└── utils/
-    ├── plot.py
-    ├── run.sh
-    ├── traffic_distribution_gen.py
-    └── traffic-distribution-gen.html
+├── resources/                   # Configuration and resource files
+│   ├── distributions/           # Predefined traffic distribution patterns
+│   ├── file-list.json
+│   └── website-list.json
+├── topology/                    # Network topology definitions
+│   ├── simple.dot
+│   ├── star.dot
+│   ├── complex.dot
+│   └── tree.dot
+├── data/                        # Training data and scaler models
+│   └── scaler.joblib
+├── utils/                       # Utility scripts and helpers
+│   ├── plot.py
+│   ├── run.sh
+│   ├── traffic_distribution_gen.py
+│   └── traffic-distribution-gen.html
+├── plots/                       # Generated plot images and graphs (output)
+├── captures/                    # Packet captures from network simulations (output)
+└── debug/                       # Debug logs and diagnostic outputs (output)
 ```
 
 # Project Setup Guide
