@@ -14,8 +14,10 @@ Networking/
 ├── README.md
 ├── requirements.txt
 ├── model_LSTM.pth
+├── captures/                    # Packet capture files from network simulations
 ├── data/
 │   └── scaler.joblib
+├── debug/                       # Debug logs and diagnostic outputs
 ├── network/
 │   ├── controller.py
 │   ├── logger.py
@@ -28,7 +30,7 @@ Networking/
 │   └── simulation/
 │       ├── simulation.py
 │       └── traffic.py
-├── plots/
+├── plots/                       # Generated plot images and graphs
 ├── resources/
 │   ├── distributions/
 │   ├── file-list.json
