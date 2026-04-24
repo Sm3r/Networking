@@ -16,7 +16,7 @@ def plot_test_results():
     ### Load the Scaler and Test Dataset
     scaler_path = DATA_DIR / "scaler.joblib"
     scaler = joblib.load(scaler_path)
-    test_dataset = NetworkDataset(data_dir=DATA_DIR, seq_length=30, training=False)
+    test_dataset = NetworkDataset(data_dir=DATA_DIR, training=False)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
     ### Load model

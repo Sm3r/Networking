@@ -46,13 +46,13 @@ def evaluate(model, dataloader, criterion):
 def main():
     ### Hyperparameters
     BATCH_SIZE = 64
-    NUM_EPOCHS = 100
+    NUM_EPOCHS = 60
     LEARNING_RATE = 1e-3
 
     prepare_network_data(data_dir=DATA_DIR, force_rebuild=False)
 
-    train_dataset = NetworkDataset(data_dir=DATA_DIR, seq_length=30, training=True)
-    test_dataset = NetworkDataset(data_dir=DATA_DIR, seq_length=30, training=False)
+    train_dataset = NetworkDataset(data_dir=DATA_DIR, training=True)
+    test_dataset = NetworkDataset(data_dir=DATA_DIR, training=False)
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
