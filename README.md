@@ -96,7 +96,7 @@ sudo apt upgrade
 ## 3. Python Virtual Environment
 
 It is recommended to create a virtual environment to keep your Python dependencies isolated from the system.
-inside the project folder create the enviroment, activate it and install all Python packages needed:
+inside the **`project folder`** create the enviroment, activate it and install all Python packages needed:
 
 ```bash
 python3 -m venv venv
@@ -104,6 +104,7 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt --default-timeout=240 --retries 10 --no-cache-dir
 ```
+<!-- da capire come fare -->
 
 ## 4. Running the simulation
 
