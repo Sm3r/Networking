@@ -106,7 +106,7 @@ pip install -r requirements.txt --default-timeout=240 --retries 10 --no-cache-di
 pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 sudo python3 -m pip install numpy
 ```
-<!-- da capire come fare -->
+
 
 ## 4. Running the simulation
 
@@ -117,19 +117,19 @@ Make sure you are inside the **`Traffic-prediction-in-SDN-networks`** folder.
 Start simulation using the provided script:
 
 ```bash
-./utils/run.sh <topology-path>
+sudo ./utils/run.sh <topology-path>
 ```
 
 For example:
 
 ```bash
-./utils/run.sh topology/simple.dot
+sudo ./utils/run.sh topology/simple.dot
 ```
 
 #### Live prediction:
 To run the simulation with the live network traffic prediction toggled on add the `--live` parameter like so:
 ```bash
-./utils/run.sh topology/simple.dot --live
+sudo ./utils/run.sh topology/simple.dot --live
 ```
 
 
@@ -137,7 +137,7 @@ To run the simulation with the live network traffic prediction toggled on add th
 By default a new pseudo-randomly generated distribution is generated and used at each simulation.
 Optionally one of the distribution on wich the model was trained on can be used like so:
 ```bash
-./utils/run.sh topology/star.dot --live resources/distributions/peek.csv
+sudo ./utils/run.sh topology/star.dot --live resources/distributions/peek.csv
 ```
 
 ## 5. Running the LSTM model
@@ -146,16 +146,16 @@ Optionally one of the distribution on wich the model was trained on can be used 
 
 To run the training just execute the training script:
 ```bash
-python train/train.py
+python3 train/train.py
 ```
 
 To rebuild the dataset using new data or different `BIN_SIZE` or `window_size` you have to run the preprocessing script:
 ```bash
-python train/preprocessing.py
+python3 train/preprocessing.py
 ```
 
 To see the plot of the prediction results over the test set run:
 ```bash
-python train/plot_results.py
+python3 train/plot_results.py
 ```
 
