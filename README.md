@@ -104,7 +104,7 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt --default-timeout=240 --retries 10 --no-cache-dir
 pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-sudo python3 -m pip install numpy
+sudo python3 -m pip install numpy==1.24.4
 ```
 
 
@@ -132,6 +132,7 @@ To run the simulation with the live network traffic prediction toggled on add th
 sudo ./utils/run.sh topology/simple.dot --live
 ```
 
+<img src="resources/demo.gif">
 
 #### Using specific distribution
 By default a new pseudo-randomly generated distribution is generated and used at each simulation.
