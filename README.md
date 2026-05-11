@@ -102,6 +102,7 @@ inside the **`project folder`** create the enviroment, activate it and install a
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
+pip install -r requirements.txt --default-timeout=240 --retries 10 --no-cache-dir
 pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 sudo python3 -m pip install numpy
 ```
