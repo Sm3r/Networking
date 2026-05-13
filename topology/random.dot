@@ -1,0 +1,11 @@
+graph simple {
+    h2 [type="server"];
+    h3 [type="server"];
+
+    h1 -- s1 [latency="3"];
+    h2 -- s1 [latency="5"];
+    h4 -- s1;
+    s1 -- s2;
+    s2 -- h2 [latency="3"];
+    s2 -- h3;
+}
