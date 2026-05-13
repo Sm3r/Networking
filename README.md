@@ -29,6 +29,8 @@ Networking/
 ├── train/                       # LSTM model training and prediction
 │   ├── constants.py
 │   ├── data_loader.py
+│   ├── evaluate_naive.py
+│   ├── evaluate.py
 │   ├── network.py
 │   ├── plot_results.py
 │   ├── preprocessing.py
@@ -42,6 +44,7 @@ Networking/
 │   ├── simple.dot
 │   ├── star.dot
 │   ├── complex.dot
+│   ├── random.dot
 │   └── tree.dot
 ├── data/                        # Training data and scaler models
 │   └── scaler.joblib
