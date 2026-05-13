@@ -15,7 +15,7 @@ from preprocessing import create_sliding_windows
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 
-def evaluate_nayve(csv_path=None):
+def evaluate_naive(csv_path=None):
 	"""
 	Evaluate a naive baseline that predicts the next value as the previous bin value.
 	"""
@@ -112,4 +112,4 @@ if __name__ == "__main__":
 		clean_path = args.csv.lstrip("/")
 		csv_file = Path(__file__).parent.parent / clean_path
 
-	evaluate_nayve(csv_path=csv_file)
+	evaluate_naive(csv_path=csv_file)
