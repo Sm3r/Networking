@@ -8,7 +8,7 @@ import torch
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from torch.utils.data import DataLoader
 
-from constants import BIN_SIZE
+from constants import BIN_SIZE, WINDOW_SIZE
 from data_loader import NetworkDataset
 from preprocessing import create_sliding_windows
 
@@ -48,7 +48,7 @@ def evaluate_naive(csv_path=None):
 		chunk = binned_data[["length"]].values
 		scaled_chunk = scaler.transform(chunk)
 
-		X_test, y_test = create_sliding_windows(scaled_chunk, 20)
+		X_test, y_test = create_sliding_windows(scaled_chunk, WINDOW_SIZE)
 		if len(X_test) == 0:
 			print("Not enough data in CSV to create windows.")
 			return

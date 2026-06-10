@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 from data_loader import NetworkDataset
 from network import LSTM
-from constants import BIN_SIZE
+from constants import BIN_SIZE, WINDOW_SIZE
 
 import argparse
 import pandas as pd
@@ -49,7 +49,7 @@ def evaluate_model(csv_path=None):
         chunk = binned_data[['length']].values
         scaled_chunk = scaler.transform(chunk)
         
-        X_test, y_test = create_sliding_windows(scaled_chunk, 20)
+        X_test, y_test = create_sliding_windows(scaled_chunk, WINDOW_SIZE)
         if len(X_test) == 0:
             print("Not enough data in CSV to create windows.")
             return

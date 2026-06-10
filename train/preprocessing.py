@@ -6,9 +6,9 @@ from sklearn.preprocessing import MinMaxScaler
 import joblib
 
 try:
-    from train.constants import BIN_SIZE
+    from train.constants import BIN_SIZE, WINDOW_SIZE
 except ImportError:
-    from constants import BIN_SIZE
+    from constants import BIN_SIZE, WINDOW_SIZE
 
 def create_sliding_windows(data_array, seq_length):
     xs, ys = [], []
@@ -17,7 +17,7 @@ def create_sliding_windows(data_array, seq_length):
         ys.append(data_array[i + seq_length])
     return xs, ys
 
-def prepare_network_data(data_dir, force_rebuild=False, window_size=30):
+def prepare_network_data(data_dir, force_rebuild=False, window_size=WINDOW_SIZE):
     path = Path(data_dir)
 
     train_file = path / "train.npz"
@@ -101,4 +101,4 @@ def prepare_network_data(data_dir, force_rebuild=False, window_size=30):
     print("Data preparation completed and saved!")
 
 if __name__ == "__main__":
-    prepare_network_data(data_dir=Path(__file__).parent.parent / "data", window_size=20, force_rebuild=True)
+    prepare_network_data(data_dir=Path(__file__).parent.parent / "data", window_size=WINDOW_SIZE, force_rebuild=True)

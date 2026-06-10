@@ -13,10 +13,10 @@ from matplotlib.ticker import MultipleLocator, AutoMinorLocator
 
 try:
     from train.network import LSTM
-    from train.constants import BIN_SIZE
+    from train.constants import BIN_SIZE, WINDOW_SIZE
 except ImportError:
     from network import LSTM
-    from constants import BIN_SIZE
+    from constants import BIN_SIZE, WINDOW_SIZE
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 logger = logging.getLogger('networking')
@@ -97,8 +97,7 @@ class LivePredictor(threading.Thread):
         self.model.load_state_dict(torch.load("model_LSTM.pth", map_location=torch.device('cpu')))
         self.model.eval()
 
-        self.SEQ_LENGTH = 30
-        self.live_sequence = deque([0.0] * self.SEQ_LENGTH, maxlen=self.SEQ_LENGTH)
+        self.live_sequence = deque([0.0] * WINDOW_SIZE, maxlen=WINDOW_SIZE)
 
     def run(self):
         logger.info("Live Predictor thread started...\n")
@@ -119,7 +118,7 @@ class LivePredictor(threading.Thread):
                             scaled_input = self.scaler.transform([[current_bin_sum]])
                             self.live_sequence.append(scaled_input[0][0])
 
-                            seq_tensor = torch.tensor(self.live_sequence, dtype=torch.float32).view(1, self.SEQ_LENGTH, 1)
+                            seq_tensor = torch.tensor(self.live_sequence, dtype=torch.float32).view(1, WINDOW_SIZE, 1)
                             scaled_prediction = self.model(seq_tensor)
                             real_prediction = self.scaler.inverse_transform(scaled_prediction.numpy())[0][0]
 
