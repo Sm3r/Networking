@@ -70,8 +70,6 @@ Once it is running, clone this repository **inside the virtual machine** and **m
 
 ## 2. Install Dependencies
 
-**Make sure you have Mininet installed**
-
 Before running the project, make sure the required system packages are installed.
 You can do so by running:
 
@@ -96,6 +94,8 @@ Next, make sure your system is up to date:
 sudo apt update
 sudo apt upgrade
 ```
+
+
 ## 3. Python Virtual Environment
 
 It is recommended to create a virtual environment to keep your Python dependencies isolated from the system.
@@ -144,22 +144,22 @@ Optionally one of the distribution on wich the model was trained on can be used 
 sudo ./utils/run.sh topology/star.dot --live resources/distributions/peek.csv
 ```
 
-## 5. Running the LSTM model
-
-**Optionally you can run the LSTM standalone:**
-
-To run the training just execute the training script:
-```bash
-python3 train/train.py
-```
-
-To rebuild the dataset using new data or different `BIN_SIZE` or `window_size` you have to run the preprocessing script:
-```bash
-python3 train/preprocessing.py
-```
+#### Visualizing model test performances
 
 To see the plot of the prediction results over the test set run:
 ```bash
 python3 train/plot_results.py
 ```
 
+
+## 5. Tweaking the prediction model
+
+To rebuild the dataset using new data or different `BIN_SIZE` / `window_size` you have to run the preprocessing script:
+```bash
+python3 train/preprocessing.py
+```
+
+To re-run the training simply execute the training script:
+```bash
+python3 train/train.py
+```
