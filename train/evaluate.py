@@ -16,7 +16,7 @@ from preprocessing import create_sliding_windows
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-def evaluate_model(csv_path=None, show_plot=False):
+def evaluate_model(csv_path=None):
     """
     Evaluate the LSTM model on the test set, or a single CSV if provided, and print relevant metrics.
     """
@@ -112,23 +112,27 @@ def evaluate_model(csv_path=None, show_plot=False):
     print(f"Mean Absolute Error (MAE):     {scaled_mae:.6f}")
     print(f"R² Score:                      {scaled_r2:.6f}")
 
-    if show_plot:
-        print("\nGenerating plot...")
-        plt.figure(figsize=(15, 6))
-        plt.plot(real_actuals, label='Actual Traffic (Bytes)', color='blue', alpha=0.6, linewidth=2)
-        plt.plot(real_predictions, label='Predicted Traffic (Bytes)', color='red', alpha=0.9, linestyle='--', linewidth=1.5)
-        plt.title('Network Byte Load: Actual vs. Predicted', fontsize=16)
-        plt.xlabel("Virtual Simulation Timestamp")
-        plt.ylabel(f"Bytes per {BIN_SIZE} Timestamps Bin")
-        plt.legend(loc='upper right', fontsize=12)
-        plt.grid(True, linestyle=':', alpha=0.7)
-        plt.tight_layout()
-        plt.show()
+    ### Plot and save results
+    plt.figure(figsize=(15, 6))
+    plt.plot(real_actuals, label='Actual Traffic (Bytes)', color='blue', alpha=0.6, linewidth=2)
+    plt.plot(real_predictions, label='Predicted Traffic (Bytes)', color='red', alpha=0.9, linestyle='--', linewidth=1.5)
+    plt.title('Network Byte Load: Actual vs. Predicted', fontsize=16)
+    plt.xlabel("Virtual Simulation Timestamp")
+    plt.ylabel(f"Bytes per {BIN_SIZE} Timestamps Bin")
+    plt.legend(loc='upper right', fontsize=12)
+    plt.grid(True, linestyle=':', alpha=0.7)
+    plt.tight_layout()
+
+    plot_dir = Path(__file__).parent.parent / "plots"
+    plot_dir.mkdir(exist_ok=True)
+    plot_path = plot_dir / "evaluation.png"
+    plt.savefig(plot_path, dpi=150)
+    plt.close()
+    print(f"\nPlot saved to {plot_path}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate LSTM model")
     parser.add_argument("csv", type=str, nargs="?", help="Path to a single CSV simulation file to evaluate", default=None)
-    parser.add_argument("--plot", action="store_true", help="Show actual vs predicted plot")
     args = parser.parse_args()
     
     csv_file = None
@@ -136,4 +140,4 @@ if __name__ == "__main__":
         clean_path = args.csv.lstrip("/")
         csv_file = Path(__file__).parent.parent / clean_path
         
-    evaluate_model(csv_path=csv_file, show_plot=args.plot)
+    evaluate_model(csv_path=csv_file)
