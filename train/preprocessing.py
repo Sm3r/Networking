@@ -28,9 +28,10 @@ def prepare_network_data(data_dir, force_rebuild=False, window_size=WINDOW_SIZE)
         print("Prepared data found! Skipping Pandas processing...")
         return
 
-    # Look for CSV files in both root and subdirectories
-    datasets = sorted(glob.glob(str(path / "*.csv")))
-    datasets += sorted(glob.glob(str(path / "*/*.csv")))
+    # Look for CSV files in training subdirectories only
+    datasets = []
+    for subdir in ["captures-generated", "captures-random"]:
+        datasets += sorted(glob.glob(str(path / subdir / "*.csv")))
     
     if not datasets:
         raise ValueError(f"No CSV files found in {path} or its subdirectories!")
